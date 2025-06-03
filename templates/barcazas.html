@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Planilla Barcazas{% endblock %}
+
+{% block navbar_brand_text %}Planilla Barcazas{% endblock %}
+
+{% block main_style %}
+    /* Estilo para el fondo del área principal (<main>) */
+    background-image: url('{{ url_for('static', filename='logo.jpeg') }}');
+    background-repeat: repeat;
+    background-size: 120px auto;
+    background-color: #e9ecef;
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="page-section-header shadow-sm">
+        <h1 class="mb-0 h2 page-title-text">
+            <i class="bi bi-tsunami page-title-icon"></i> Planilla Barcazas (<span id="tipoBarcazaVisual">{{ tipo_inicial|default("ops")|upper }}</span>)
+        </h1>
+    </div>
+
+    <div class="action-buttons-bar text-center my-3">
+        <div class="btn-group me-2 mb-2 mb-md-0" role="group">
+            {# MODIFICACIÓN: Añadido id al botón de guardar #}
+            <button id="btnGuardarRegistroBarcaza" onclick="guardarRegistro()" class="btn btn-success btn-lg px-4">
+                <i class="bi bi-save2-fill"></i> Guardar Registro del Día
+            </button>
+        </div>
+        <div class="btn-group me-2 mb-2 mb-md-0" role="group">
+            <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-info btn-lg text-white px-4">
+                <i class="bi bi-file-earmark-bar-graph-fill"></i> Ver Reporte
+            </a>
+        </div>
+        <div class="btn-group mb-2 mb-md-0" role="group">
+             <button id="btnCambiarPlantilla" onclick="cambiarPlantilla()" class="btn btn-secondary btn-lg px-4">
+                <i class="bi bi-arrow-repeat"></i> Cambiar a <span id="toggleNombre">{% if tipo_inicial == 'ops' %}Barcaza BITA{% else %}Barcaza OPS{% endif %}</span>
+            </button>
+        </div>
+    </div>
+    {# El div para el aviso de hora límite se insertará aquí por JS si es necesario #}
+
+    <div id="alert-container" style="position: fixed; top: calc(4.5rem + 20px); right: 20px; z-index: 1050; width: auto; max-width: 400px;"></div>
+
+    <div id="contenedorTablas" class="tables-container">
+        {# Las tablas se generan aquí por JavaScript #}
+    </div>
+</div>
+
+<style>
+    .page-section-header {
+        background-color: rgba(255, 255, 255, 0.97);
+        padding: 1rem 1.5rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0;
+        text-align: center;
+    }
+    .page-title-text { color: #343a40; font-weight: 600; }
+    .page-title-icon { color: #0b8552; font-size: 1.1em; margin-right: 0.5rem; }
+
+    .action-buttons-bar { padding-top: 1rem; padding-bottom: 1rem; }
+    .action-buttons-bar .btn-lg { padding-left: 1.5rem; padding-right: 1.5rem; }
+
+    .tables-container {
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 1.5rem;
+        border-radius: 0.375rem;
+        margin-top: 1.5rem;
+    }
+    .tables-container h2.table-title {
+        font-size: 1.5rem;
+        color: #0b8552;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #0b8552;
+    }
+    .tables-container h2.table-title:first-child {
+        margin-top: 0;
+    }
+
+    .table-header-custom {
+        background-color: #0b8552 !important;
+        color: white !important;
+    }
+    .table-responsive thead.sticky-top th {
+        position: sticky;
+        top: 0; 
+        z-index: 1; 
+    }
+
+    .editable { background-color: #fef9e7; cursor: text; }
+    .editable:hover { background-color: #fdecb3; }
+    .editable:focus {
+        background-color: #fcf3cf; 
+        outline: 2px solid #0b8552; 
+        box-shadow: 0 0 5px rgba(11, 133, 82, 0.5);
+    }
+    /* Estilo para el aviso de hora límite */
+    .aviso-hora-limite {
+        font-size: 0.9rem;
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+    }
+    /* Estilo para celdas no editables después de la hora límite */
+    .celda-no-editable {
+        background-color: #e9ecef !important;
+        cursor: default !important;
+        color: #6c757d;
+    }
+    .celda-no-editable:hover,
+    .celda-no-editable:focus {
+        background-color: #e9ecef !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+</style>
+
+<script>
+    // Datos pasados desde Flask
+    const datosOps = {{ datos_ops | default([]) | tojson | safe }};
+    const datosBita = {
+        "Barcaza CR": {{ datos_cr | default([]) | tojson | safe }},
+        "Barcaza Margoth": {{ datos_margoth | default([]) | tojson | safe }},
+        "Barcaza Odisea": {{ datos_odisea | default([]) | tojson | safe }}
+    };
+    let actual = '{{ tipo_inicial | default("ops") }}';
+    
+    // NUEVO: Bandera global para controlar la edición
+    let edicionBarcazasPermitida = true;
+    const HORA_LIMITE_REGISTRO_BARCAZAS = 10; // 10 AM
+
+    const tipoBarcazaVisualSpan = document.getElementById("tipoBarcazaVisual");
+    const toggleNombreSpan = document.getElementById("toggleNombre");
+    const contenedorTablasDiv = document.getElementById("contenedorTablas");
+    const btnGuardarRegistroBarcaza = document.getElementById('btnGuardarRegistroBarcaza'); // Obtener el botón
+
+    function crearTabla(nombre, datosTabla) {
+        const divTableWrapper = document.createElement('div');
+        divTableWrapper.classList.add('table-responsive', 'mb-4', 'shadow-sm'); 
+
+        const h2 = document.createElement('h2');
+        h2.textContent = nombre;
+        h2.classList.add('table-title'); 
+
+        const table = document.createElement('table');
+        table.classList.add('table', 'table-bordered', 'table-striped', 'table-hover', 'table-sm', 'align-middle');
+        
+        const thead = document.createElement('thead');
+        thead.classList.add('sticky-top', 'table-header-custom'); 
+        thead.innerHTML = `
+            <tr>
+                <th style="min-width: 120px;">TK</th>
+                <th style="min-width: 150px;">PRODUCTO</th>
+                <th style="min-width: 120px;">MAX. CAP</th>
+                <th style="min-width: 120px;">BLS @60</th>
+                <th style="min-width: 100px;">API</th>
+                <th style="min-width: 100px;">%BSW</th>
+                <th style="min-width: 100px;">%S</th>
+            </tr>`;
+        
+        const tbody = document.createElement('tbody');
+        datosTabla.forEach(fila => {
+            const tr = document.createElement('tr');
+            tr.dataset.tk = fila.TK;
+            // MODIFICACIÓN: No añadir 'editable' ni 'contenteditable' si la edición no está permitida
+            const esEditable = edicionBarcazasPermitida; 
+            tr.innerHTML = `
+                <td>${fila.TK || ''}</td>
+                <td>${fila.PRODUCTO || ''}</td>
+                <td>${fila.MAX_CAP || ''}</td>
+                <td ${esEditable ? 'contenteditable="true" class="editable"' : 'class="celda-no-editable"'} data-field="BLS_60" inputmode="decimal">${fila.BLS_60 || ''}</td>
+                <td ${esEditable ? 'contenteditable="true" class="editable"' : 'class="celda-no-editable"'} data-field="API" inputmode="decimal">${fila.API || ''}</td>
+                <td ${esEditable ? 'contenteditable="true" class="editable"' : 'class="celda-no-editable"'} data-field="BSW" inputmode="decimal">${fila.BSW || ''}</td>
+                <td ${esEditable ? 'contenteditable="true" class="editable"' : 'class="celda-no-editable"'} data-field="S" inputmode="decimal">${fila.S || ''}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        
+        divTableWrapper.appendChild(table); 
+        
+        const finalFragment = document.createDocumentFragment();
+        finalFragment.appendChild(h2); 
+        finalFragment.appendChild(divTableWrapper); 
+
+        return finalFragment;
+    }
+
+    function cargarTablas() {
+        contenedorTablasDiv.innerHTML = ''; 
+        if (actual === 'ops') {
+            if (datosOps && datosOps.length > 0) {
+                 contenedorTablasDiv.appendChild(crearTabla("Barcaza OPS", datosOps));
+            } else {
+                 contenedorTablasDiv.innerHTML = '<p class="text-center text-muted mt-3">No hay datos OPS disponibles.</p>';
+            }
+        } else {
+            let hasBitaData = false;
+            for (const [nombre, data] of Object.entries(datosBita)) {
+                if (data && data.length > 0) {
+                    contenedorTablasDiv.appendChild(crearTabla(nombre, data));
+                    hasBitaData = true;
+                }
+            }
+            if (!hasBitaData) {
+                 contenedorTablasDiv.innerHTML = '<p class="text-center text-muted mt-3">No hay datos BITA disponibles.</p>';
+            }
+        }
+        // Si la edición está permitida, activar listeners para las nuevas celdas 'editable'
+        if (edicionBarcazasPermitida) {
+            activarListenersParaCeldasEditables();
+        }
+    }
+    
+    function activarListenersParaCeldasEditables() {
+        // Esta función ahora solo adjunta listeners a celdas que SÍ SON editables
+        document.querySelectorAll(".editable").forEach(cell => {
+            // Limpiar listeners previos clonando es una opción, pero puede ser costoso.
+            // Dado que las tablas se reconstruyen, las celdas son nuevas.
+            // Si no se reconstruyen siempre, considerar una forma de no duplicar.
+            // Por ahora, asumimos que `cargarTablas` limpia y crea celdas nuevas.
+
+            cell.addEventListener('keydown', function(event) {
+                // No es necesario verificar edicionBarcazasPermitida aquí si esta función solo se llama cuando está permitida
+                const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+                if (allowedKeys.includes(event.key)) { return; }
+                if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) { return; }
+                if ((event.key >= '0' && event.key <= '9')) { return; }
+                if (event.key === ',' || event.key === '.') {
+                    if (cell.innerText.includes(',') || cell.innerText.includes('.')) { event.preventDefault(); } return;
+                }
+                event.preventDefault();
+            });
+            cell.addEventListener('paste', function(event) {
+                event.preventDefault();
+                let paste = (event.clipboardData || window.clipboardData).getData('text');
+                paste = paste.replace(/[^\d,.]/g, '').replace(/([,.])(?=.*[,.])/g, '');
+                document.execCommand('insertText', false, paste);
+            });
+            cell.addEventListener("blur", () => {
+                const row = cell.closest("tr"); if (!row) return;
+                const tk = row.dataset.tk; const field = cell.dataset.field; 
+                let value = cell.innerText.trim().replace(',', '.'); // Estandarizar a punto para el backend
+                
+                fetch("{{ url_for('guardar_datos_barcaza') }}", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tk, field, value, tipo: actual }) 
+                })
+                .then(res => { if (!res.ok) { return res.json().then(errData => { throw errData || new Error("Error HTTP: " + res.status);}); } return res.json(); })
+                .then(data => {
+                    if (data.success) { cell.classList.add('border-success', 'border-2'); setTimeout(()=> { cell.classList.remove('border-success', 'border-2'); }, 1500); }
+                    else { mostrarAlerta("Error al guardar celda: " + (data.message || "Error desconocido"), "danger"); }
+                })
+                .catch(err => { console.error("Error fetch (guardar celda barcaza):", err); mostrarAlerta("Error al guardar celda: " + (err.message || "Error de conexión."), "danger"); });
+            });
+        });
+    }
+
+    function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
+        const alertContainer = document.getElementById('alert-container');
+        if (!alertContainer) { console.error("Contenedor de alertas no encontrado."); return; }
+        const wrapper = document.createElement('div');
+        let iconClass = 'bi-info-circle-fill';
+        if (tipo === 'success') iconClass = 'bi-check-circle-fill';
+        if (tipo === 'danger') iconClass = 'bi-exclamation-triangle-fill';
+        if (tipo === 'warning') iconClass = 'bi-exclamation-diamond-fill';
+        wrapper.innerHTML = `<div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center" role="alert"><i class="bi ${iconClass} me-2"></i><div>${mensaje}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+        alertContainer.appendChild(wrapper);
+        const alertElement = wrapper.firstChild;
+        if (alertElement) {
+            setTimeout(() => {
+                const alertInstance = bootstrap.Alert.getOrCreateInstance(alertElement);
+                if (alertInstance) { alertInstance.close(); }
+                else if (wrapper.parentElement) { wrapper.remove(); }
+            }, duracion);
+        }
+    }
+
+    function guardarRegistro() {
+        if (!edicionBarcazasPermitida) {
+            mostrarAlerta("❌ Los registros están cerrados después de las " + HORA_LIMITE_REGISTRO_BARCAZAS + ":00 AM.", "warning");
+            return;
+        }
+        // El backend ya tiene la restricción de hora para /guardar-registro-barcaza-ops y -bita
+        // pero este chequeo en el frontend mejora la UX.
+        mostrarAlerta("Guardando registro, por favor espera...", "info", 6000);
+        fetch(`/guardar-registro-barcaza-${actual}`, { method: "POST" })
+        .then(res => { if (!res.ok) { return res.json().then(errData => { throw errData || new Error("Error HTTP: " + res.status); }); } return res.json(); })
+        .then(data => {
+            if (data.success) { mostrarAlerta("✅ ¡Registro guardado exitosamente!", "success"); setTimeout(() => { window.location.href = "{{ url_for('reporte_barcaza') }}"; }, 1500); }
+            else { mostrarAlerta("❌ Error al guardar registro: " + (data.message || "Error desconocido"), "danger"); }
+        })
+        .catch(err => { console.error("Error de red (guardar registro barcaza):", err); mostrarAlerta("❌ " + (err.message || "Error de red al guardar el registro."), "danger"); });
+    }
+
+    function cambiarPlantilla() {
+        actual = actual === 'ops' ? 'bita' : 'ops';
+        const tipoNombreVisual = actual === 'ops' ? 'OPS' : 'BITA';
+        const toggleBtnNombre = actual === 'ops' ? 'Barcaza BITA' : 'Barcaza OPS';
+
+        if(tipoBarcazaVisualSpan) tipoBarcazaVisualSpan.textContent = tipoNombreVisual;
+        if(toggleNombreSpan) toggleNombreSpan.textContent = toggleBtnNombre;
+        
+        cargarTablas(); // Esto recreará las tablas y llamará a activarListenersParaCeldasEditables si es necesario
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const ahora = new Date();
+        const horaActual = ahora.getHours();
+
+        if (horaActual >= HORA_LIMITE_REGISTRO_BARCAZAS) {
+            edicionBarcazasPermitida = false; // Actualizar la bandera global
+
+            if (btnGuardarRegistroBarcaza) {
+                btnGuardarRegistroBarcaza.disabled = true;
+                btnGuardarRegistroBarcaza.classList.remove('btn-success');
+                btnGuardarRegistroBarcaza.classList.add('btn-secondary');
+            }
+            // Deshabilitar también el botón de cambiar plantilla si se desea
+            // const btnCambiarPlantilla = document.getElementById('btnCambiarPlantilla');
+            // if (btnCambiarPlantilla) btnCambiarPlantilla.disabled = true;
+
+
+            const avisoDiv = document.createElement('div');
+            avisoDiv.innerHTML = `
+                <div class="alert alert-warning text-center aviso-hora-limite" role="alert">
+                    <i class="bi bi-clock-fill me-2"></i>Los registros para hoy se aceptan únicamente antes de las ${HORA_LIMITE_REGISTRO_BARCAZAS}:00 AM. La planilla está bloqueada.
+                </div>
+            `;
+            const actionButtonsBar = document.querySelector('.action-buttons-bar');
+            if (actionButtonsBar && actionButtonsBar.parentNode) {
+                actionButtonsBar.parentNode.insertBefore(avisoDiv, actionButtonsBar.nextSibling);
+            }
+        }
+
+        // Configuración inicial de los textos de los spans
+        const initialTipoNombreVisual = actual === 'ops' ? 'OPS' : 'BITA';
+        const initialToggleBtnNombre = actual === 'ops' ? 'Barcaza BITA' : 'Barcaza OPS';
+        if(tipoBarcazaVisualSpan) tipoBarcazaVisualSpan.textContent = initialTipoNombreVisual;
+        if(toggleNombreSpan) toggleNombreSpan.textContent = initialToggleBtnNombre;
+        
+        cargarTablas(); // Carga inicial, aplicará la lógica de ediciónPermitida
+    });
+</script>
+{% endblock %}

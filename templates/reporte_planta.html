@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte Visual de Planta{% endblock %}
+
+{% block navbar_brand_text %}Reporte Planta{% endblock %}
+
+{% block main_style %}
+    /* Estilo para el fondo del área principal (<main>) */
+    background-image: url('{{ url_for('static', filename='logo.jpeg') }}');
+    background-repeat: repeat;
+    background-size: 120px auto;
+    background-color: #e9ecef;
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="page-section-header shadow-sm">
+        <h1 class="mb-0 h2 page-title-text">
+            <i class="bi bi-buildings-fill page-title-icon"></i> Reporte Visual de Planta Industrial
+        </h1>
+        {% if fecha_actualizacion_planta and fecha_actualizacion_planta != "N/A" and "Error" not in fecha_actualizacion_planta and "No hay registros guardados" not in fecha_actualizacion_planta %}
+            <p class="mb-0 mt-2 text-muted" style="font-size: 0.9rem;">
+                <i class="bi bi-clock-history"></i> Última actualización de datos: {{ fecha_actualizacion_planta }}
+            </p>
+        {% elif fecha_actualizacion_planta %}
+             <p class="mb-0 mt-2 text-warning" style="font-size: 0.9rem;">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ fecha_actualizacion_planta }}
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="filter-section card shadow-sm my-4">
+        <div class="card-body d-flex flex-wrap justify-content-center align-items-center">
+            <div class="mb-2 me-md-3">
+                <label for="filtroProducto" class="form-label me-2">Filtrar por producto:</label>
+                <select id="filtroProducto" class="form-select form-select-sm d-inline-block w-auto" onchange="filtrar()">
+                    <option value="todos" selected>Todos los Productos</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label for="filtroTanque" class="form-label me-2">Filtrar por tanque:</label>
+                <select id="filtroTanque" class="form-select form-select-sm d-inline-block w-auto" onchange="filtrar()">
+                    <option value="todos" selected>Todos los Tanques</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="contenedor-tanques" class="tanques-grid">
+        {# Los tanques se cargarán aquí por JavaScript #}
+    </div>
+
+    <div class="total-producto-container text-center my-4" id="totalProductoContainer">
+        <h3 id="totalProducto" class="h5"></h3>
+    </div>
+
+</div>
+
+<style>
+    .page-section-header {
+        background-color: rgba(255, 255, 255, 0.97);
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    .page-title-text {
+        color: #343a40;
+        font-weight: 600;
+    }
+    .page-title-icon { /* Icono cambiado para reflejar 'industrial' */
+        color: #005689; /* Un azul industrial */
+        font-size: 1.1em;
+        margin-right: 0.6rem;
+    }
+
+    .filter-section.card {
+        background-color: rgba(255, 255, 255, 0.95);
+    }
+    .filter-section .form-label {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .tanques-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Un poco más ancho para tarjetas */
+        gap: 30px; 
+        padding: 10px 0;
+    }
+
+    .tanque-card {
+        background: #f8f9fa; /* Un fondo de tarjeta ligeramente gris */
+        border-radius: 8px; /* Bordes menos redondeados para la tarjeta */
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .tanque-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+    }
+
+    /* --- ESTILOS DEL TANQUE ACTUALIZADOS --- */
+    .grafico-tanque-container {
+        width: 130px; /* Ancho del tanque */
+        height: 170px; /* Alto del tanque */
+        border: 1px solid #b0b0b0; /* Borde más sutil */
+        border-bottom: 2px solid #909090; /* Borde inferior más grueso para perspectiva */
+        border-radius: 8px 8px 3px 3px; /* Redondeo superior suave, inferior casi plano */
+        margin: 0 auto 20px auto;
+        position: relative;
+        background: #e9ecef; /* Color de cuerpo de tanque gris claro */
+        overflow: hidden; 
+        box-shadow: inset 0px 3px 4px rgba(255,255,255,0.5), /* Brillo superior interno */
+                    inset 0px -3px 4px rgba(0,0,0,0.08), /* Sombra inferior interna */
+                    2px 2px 5px rgba(0,0,0,0.05); /* Pequeña sombra externa */
+    }
+
+    /* Tapa superior del tanque */
+    .grafico-tanque-container::before {
+        content: '';
+        position: absolute;
+        top: -1px; /* Solapar ligeramente el borde superior del contenedor */
+        left: -1px;
+        right: -1px;
+        height: 22px; /* Altura de la tapa */
+        background: linear-gradient(to bottom, #d8d8d8, #b8b8b8); /* Gradiente metálico para la tapa */
+        border-radius: 50% / 12px 12px 0 0; /* Forma de cúpula elíptica (Radio H / Radio V) */
+        border: 1px solid #a0a0a0;
+        border-bottom: 1px solid #909090;
+        box-shadow: inset 0px 2px 2px rgba(255,255,255,0.6), /* Brillo interno en la tapa */
+                    0px 1px 1px rgba(0,0,0,0.1); /* Pequeña sombra debajo de la tapa */
+        z-index: 2; 
+    }
+
+    .nivel-liquido {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        /* Ejemplo de líquido verde industrial, puedes cambiarlo */
+        background: linear-gradient(to top, #2E7D32, #4CAF50); 
+        /* Para el azul original: background: linear-gradient(to top, #0056b3, #007bff); */
+        border-radius: 0 0 2px 2px; /* Igual al redondeo inferior del contenedor */
+        transition: height 0.5s ease-out, filter 0.3s ease; /* Añadida transición para filter */
+        z-index: 1; 
+    }
+
+    /* Efecto de brillo en el líquido al hacer hover en la tarjeta */
+    .tanque-card:hover .nivel-liquido {
+        filter: brightness(1.15);
+    }
+
+
+    .bbls-label {
+        position: absolute;
+        width: 100%;
+        top: 55%; /* Ajustar para que quede bien centrado en el área visible del líquido */
+        left: 0;
+        transform: translateY(-50%);
+        color: white;
+        font-weight: bold;
+        font-size: 1rem; /* Un poco más pequeño para tanques más estilizados */
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        z-index: 3; 
+        text-align: center;
+        pointer-events: none; /* Para que no interfiera con el hover de la tarjeta */
+    }
+
+    .porcentaje-display {
+        margin: 10px auto; /* Reducir margen superior si el tanque es más alto */
+        width: 70px;
+        height: 70px;
+        border-width: 5px;
+        border-style: solid;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .info-tanque {
+        text-align: left;
+        font-size: 0.88rem; /* Ligeramente más grande */
+        margin-top: 15px;
+        width: 100%;
+        color: #495057; /* Un gris más oscuro para mejor lectura */
+    }
+    .info-tanque strong { /* Nombre del TK */
+        font-size: 1.05rem; 
+        color: #005689; /* Mismo azul que el icono del título */
+        display: block;
+        margin-bottom: 6px; /* Un poco más de espacio */
+    }
+    .info-tanque span {
+        display: block;
+        margin-bottom: 4px;
+        color: #5a6268;
+    }
+    .info-tanque span b { 
+        color: #343a40;
+        font-weight: 600;
+    }
+    /* --- FIN DE ESTILOS DEL TANQUE ACTUALIZADOS --- */
+
+    .total-producto-container h3 {
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #0b8552;
+        padding: 10px 20px;
+        border-radius: 8px;
+        display: inline-block;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+</style>
+
+<script>
+const datosPlanta = {{ datos_planta_para_js | tojson }};
+
+const contenedorTanques = document.getElementById("contenedor-tanques");
+const filtroProductoSelect = document.getElementById("filtroProducto");
+const filtroTanqueSelect = document.getElementById("filtroTanque");
+const totalProductoDisplay = document.getElementById("totalProducto");
+const totalProductoContainer = document.getElementById("totalProductoContainer");
+
+function cargarFiltros() {
+    const productos = new Set();
+    const tanques = new Set();
+
+    if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
+        datosPlanta.forEach(d => {
+            if (d && d.PRODUCTO) productos.add(d.PRODUCTO);
+            if (d && d.TK) tanques.add(d.TK);
+        });
+    } else {
+        console.warn("datosPlanta no es un array válido o está vacío. No se cargarán filtros.");
+    }
+
+    filtroProductoSelect.innerHTML = '<option value="todos" selected>Todos los Productos</option>';
+    filtroTanqueSelect.innerHTML = '<option value="todos" selected>Todos los Tanques</option>';
+
+    productos.forEach(p => {
+        const op = document.createElement("option");
+        op.value = p; op.textContent = p;
+        filtroProductoSelect.appendChild(op);
+    });
+    tanques.forEach(t => {
+        const op = document.createElement("option");
+        op.value = t; op.textContent = t;
+        filtroTanqueSelect.appendChild(op);
+    });
+}
+
+function crearVisualizacionTanque(data) {
+    const bls60 = parseFloat(data.BLS_60) || 0;
+    const maxCap = parseFloat(data.MAX_CAP) || 0;
+    const api = data.API !== null && data.API !== undefined && data.API !== "" ? data.API : 'N/A';
+    const bsw = data.BSW !== null && data.BSW !== undefined && data.BSW !== "" ? data.BSW + '%' : 'N/A';
+    const s = data.S !== null && data.S !== undefined && data.S !== "" ? data.S + '%' : 'N/A';
+    const producto = data.PRODUCTO || 'N/A';
+    const tkNombre = data.TK || 'N/A';
+
+    const porcentajeLlenado = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
+    const porcentajeFormateado = porcentajeLlenado.toFixed(1);
+
+    let colorNivel;
+    let colorBordePorcentaje;
+
+    // Lógica de colores para el porcentaje (igual que antes)
+    if (porcentajeLlenado >= 95) {
+        colorNivel = 'linear-gradient(to top, #c0392b, #e74c3c)'; // Rojo
+        colorBordePorcentaje = "#e74c3c";
+    } else if (porcentajeLlenado >= 80) {
+        colorNivel = 'linear-gradient(to top, #d35400, #e67e22)'; // Naranja
+        colorBordePorcentaje = "#e67e22";
+    } else if (porcentajeLlenado >= 40) {
+        colorNivel = 'linear-gradient(to top, #f39c12, #f1c40f)'; // Amarillo
+        colorBordePorcentaje = "#f1c40f";
+    } else if (porcentajeLlenado > 0) {
+         // Usar el mismo color base que el .nivel-liquido para consistencia
+        colorNivel = 'linear-gradient(to top, #2E7D32, #4CAF50)'; // Verde (o el color que elijas para el líquido)
+        colorBordePorcentaje = "#2ecc71"; // Verde para el borde del %
+    } else {
+        colorNivel = 'transparent';
+        colorBordePorcentaje = "#bdc3c7"; // Gris
+    }
+    
+    const mensajePorcentaje = porcentajeLlenado >= 100 ? "LLENO" : `${porcentajeFormateado}%`;
+
+    const card = document.createElement("div");
+    card.className = "tanque-card";
+
+    // MODIFICACIÓN: Añadir atributo title para tooltip nativo del navegador
+    card.setAttribute("title", 
+        `Tanque: ${tkNombre}\n` +
+        `Producto: ${producto}\n` +
+        `Volumen: ${bls60.toLocaleString()} BLS\n` +
+        `Capacidad: ${maxCap.toLocaleString()} BLS\n` +
+        `Llenado: ${porcentajeFormateado}%`
+    );
+
+    card.innerHTML = `
+        <div class="grafico-tanque-container">
+            <div class="nivel-liquido" style="height:${porcentajeLlenado}%; background: ${colorNivel};"></div>
+            <div class="bbls-label">${bls60.toLocaleString()} BLS</div>
+        </div>
+        <div class="porcentaje-display" style="border-color: ${colorBordePorcentaje}; color: ${colorBordePorcentaje};">
+            ${mensajePorcentaje}
+        </div>
+        <div class="info-tanque">
+            <strong>${tkNombre}</strong>
+            <span>${producto}</span>
+            <span><b>Max:</b> ${maxCap.toLocaleString()} BLS</span>
+            <span><b>API:</b> ${api}</span>
+            <span><b>BSW:</b> ${bsw}</span>
+            <span><b>S:</b> ${s}</span>
+        </div>
+    `;
+    return card;
+}
+
+function filtrar() {
+    const productoSeleccionado = filtroProductoSelect.value;
+    const tanqueSeleccionado = filtroTanqueSelect.value;
+    contenedorTanques.innerHTML = ""; 
+    let totalBLSFiltrado = 0;
+    let productoParaTotal = "";
+    let tanquesMostrados = 0;
+
+    if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
+        datosPlanta.forEach(d => {
+            if (typeof d !== 'object' || d === null) return;
+
+            const coincideProducto = (productoSeleccionado === "todos" || d.PRODUCTO === productoSeleccionado);
+            const coincideTanque = (tanqueSeleccionado === "todos" || d.TK === tanqueSeleccionado);
+
+            if (coincideProducto && coincideTanque) {
+                contenedorTanques.appendChild(crearVisualizacionTanque(d));
+                tanquesMostrados++;
+                const bls60 = parseFloat(d.BLS_60) || 0;
+                if (productoSeleccionado !== "todos" && tanqueSeleccionado === "todos") {
+                    totalBLSFiltrado += bls60;
+                    productoParaTotal = productoSeleccionado;
+                } else { 
+                    productoParaTotal = ""; 
+                }
+            }
+        });
+    }
+
+    if (productoParaTotal) {
+        totalProductoDisplay.textContent = `Total ${productoParaTotal}: ${totalBLSFiltrado.toLocaleString()} BLS`;
+        totalProductoContainer.style.display = 'block';
+    } else {
+        totalProductoDisplay.textContent = "";
+        totalProductoContainer.style.display = 'none';
+    }
+
+    if (tanquesMostrados === 0) {
+        if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
+             contenedorTanques.innerHTML = `<p class="text-center text-muted w-100">No hay tanques que coincidan con los filtros seleccionados.</p>`;
+        } else {
+             contenedorTanques.innerHTML = `<p class="text-center text-muted w-100">No hay datos de planta disponibles para mostrar. Compruebe si hay registros guardados.</p>`;
+        }
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    cargarFiltros();
+    filtrar(); 
+});
+</script>
+{% endblock %}

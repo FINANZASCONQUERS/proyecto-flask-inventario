@@ -1,0 +1,35 @@
+{
+  "REFINERIA": {
+    "campos": {
+      "Indico": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
+      "Dorotea": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
+      "Tulipan": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
+      "Acites": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
+      "Alberta": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"}
+    }
+  },
+  "EDSM": {
+    "campos": {
+      "Planta Ecopetrol": {
+        "productos": ["Combustóleo pesado", "Curdo Pesado", "FO6", "FO4"],
+        "auto_select_product": "Combustóleo pesado"
+      },
+      "Turpial": {
+        "productos": ["Combustóleo pesado", "Curdo Pesado", "FO6", "FO4"],
+        "auto_select_product": "Curdo Pesado"
+      },
+      "Carrizales": {
+        "productos": ["Combustóleo pesado", "Curdo Pesado", "FO6", "FO4"],
+        "auto_select_product": "Curdo Pesado"
+      },
+      "OMI": {
+        "productos": ["Combustóleo pesado", "Curdo Pesado", "FO6", "FO4"],
+        "auto_select_product": "Curdo Pesado"
+      },
+      "Planta Octano": {
+        "productos": ["FO4", "FO6"],
+        "auto_select_product": "FO4" 
+      }
+    }
+  }
+}

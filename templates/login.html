@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio | Conquers Trading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Para el video de fondo */
+        }
+
+        .video-background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2; 
+            background: url("{{ url_for('static', filename='Fondo.png') }}") center/cover no-repeat; /* Fallback */
+        }
+
+        #bg-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); 
+            z-index: -1; 
+        }
+
+        .login-page-header { /* Barra blanca superior con el logo */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff; 
+            padding: 15px 30px;     
+            z-index: 10;            
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+            box-sizing: border-box;
+        }
+
+        .header-logo {
+            height: 45px; 
+            width: auto;
+        }
+
+        .login-page-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px; 
+        }
+
+        .login-box {
+            position: relative; 
+            z-index: 1;         
+            /* CAMBIO: Fondo de la caja de login a blanco */
+            background-color: #ffffff; 
+            /* CAMBIO: Color de texto principal dentro de la caja a oscuro */
+            color: #333333; 
+            max-width: 450px; 
+            width: 100%;
+            padding: 35px 30px; 
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Sombra más pronunciada para destacar sobre el video */
+            text-align: center;
+        }
+
+        .login-box h4 { /* "Sistema de Gestión..." */
+            font-weight: 400; 
+            margin-top: 0;
+            margin-bottom: 30px; 
+            font-size: 1.3rem;
+            color: #2c3e50; /* Un gris oscuro azulado para el título */
+        }
+
+        .login-box .form-label {
+            /* CAMBIO: Color de etiquetas a oscuro */
+            color: #495057; 
+            font-weight: 500;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 0.3rem;
+            font-size: 0.9rem;
+        }
+
+        .login-box .form-control {
+            /* CAMBIO: Estilo de inputs para fondo blanco de caja */
+            background-color: #f8f9fa; /* Fondo gris claro para input */
+            border: 1px solid #ced4da;  /* Borde estándar de Bootstrap */
+            color: #212529;             /* Texto oscuro para input */
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+        }
+
+        .login-box .form-control:focus {
+            background-color: #ffffff; /* Fondo blanco al enfocar */
+            border-color: #0b8552; /* Borde verde al enfocar */
+            box-shadow: 0 0 0 0.25rem rgba(11, 133, 82, 0.25); /* Sombra verde */
+            color: #212529;
+        }
+
+        .login-box .form-control::placeholder {
+            /* CAMBIO: Color de placeholder para inputs oscuros */
+            color: #6c757d; 
+            opacity: 1;
+        }
+
+        .login-box .btn-login { /* Botón "Iniciar Sesión" */
+            /* MANTENIDO: Fondo blanco, texto verde */
+            background-color: #ffffff; 
+            color: #0b8552; 
+            font-weight: bold;
+            padding: 12px; 
+            border-radius: 8px;
+            border: 1px solid #0b8552; /* Añadido borde verde */
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .login-box .btn-login:hover {
+            background-color: #0b8552; /* Fondo verde al pasar el mouse */
+            color: #ffffff; /* Texto blanco al pasar el mouse */
+            border-color: #0a7347;
+        }
+        
+        .login-box .alert {
+            text-align: left;
+            font-size: 0.85rem;
+            /* Los colores de las alertas de Bootstrap deberían funcionar bien sobre fondo blanco */
+        }
+
+        .login-page-footer { /* Barra blanca inferior con copyright */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            padding: 10px 30px;     
+            z-index: 10;            
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1); 
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .login-page-footer p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #555; 
+        }
+
+    </style>
+</head>
+<body>
+    <div class="video-background-container">
+        <video autoplay muted loop id="bg-video" playsinline poster="{{ url_for('static', filename='Fondo.png') }}">
+            <source src="{{ url_for('static', filename='fondo_login.mp4') }}" type="video/mp4">
+            Tu navegador no soporta videos HTML5.
+        </video>
+        <div class="video-overlay"></div>
+    </div>
+
+    <header class="login-page-header">
+        <img src="{{ url_for('static', filename='logo de la empresa.jpeg') }}" alt="Logo Conquers Trading" class="header-logo">
+    </header>
+
+    <div class="login-page-container">
+        <div class="login-box">
+            <h4>Sistema de Gestión de Almacenamiento</h4>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show mt-3 mb-3" role="alert">
+                    <i class="bi {% if category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login', next=request.args.get('next', '')) }}">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email corporativo</label>
+                    <input type="email" name="email" id="email" class="form-control" placeholder="ejemplo@conquerstrading.com" required autofocus>
+                </div>
+                <div class="mb-3"> 
+                    <label for="password" class="form-label">Contraseña</label>
+                    <input type="password" name="password" id="password" class="form-control" placeholder="Tu contraseña" required>
+                </div>
+                <button type="submit" class="btn btn-login w-100 mt-4">Iniciar Sesión</button> 
+            </form>
+        </div>
+    </div>
+
+    <footer class="login-page-footer">
+        <p>&copy; <span id="currentYear"></span> Conquers Trading. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
