@@ -19,13 +19,14 @@
         <h1 class="mb-0 h2 page-title-text">
             <i class="bi bi-buildings-fill page-title-icon"></i> Reporte Visual de Planta Industrial
         </h1>
-        {% if fecha_actualizacion_planta and fecha_actualizacion_planta != "N/A" and "Error" not in fecha_actualizacion_planta and "No hay registros guardados" not in fecha_actualizacion_planta %}
-            <p class="mb-0 mt-2 text-muted" style="font-size: 0.9rem;">
-                <i class="bi bi-clock-history"></i> Última actualización de datos: {{ fecha_actualizacion_planta }}
-            </p>
-        {% elif fecha_actualizacion_planta %}
-             <p class="mb-0 mt-2 text-warning" style="font-size: 0.9rem;">
-                <i class="bi bi-exclamation-triangle-fill"></i> {{ fecha_actualizacion_planta }}
+        {# Mostrar la información de actualización solo si es un mensaje válido (no "N/A" o errores) #}
+        {% if fecha_actualizacion_info and 
+              "no disponible" not in fecha_actualizacion_info|lower and 
+              "no hay registros" not in fecha_actualizacion_info|lower and 
+              "error" not in fecha_actualizacion_info|lower and
+              fecha_actualizacion_info != "N/A" %}
+            <p class="text-muted small mb-3" style="text-align: center;">
+                <i class="bi bi-info-circle-fill me-1"></i> {{ fecha_actualizacion_info }}
             </p>
         {% endif %}
     </div>
@@ -143,37 +144,33 @@
         bottom: 0;
         left: 0;
         width: 100%;
-        /* Ejemplo de líquido verde industrial, puedes cambiarlo */
         background: linear-gradient(to top, #2E7D32, #4CAF50); 
-        /* Para el azul original: background: linear-gradient(to top, #0056b3, #007bff); */
-        border-radius: 0 0 2px 2px; /* Igual al redondeo inferior del contenedor */
-        transition: height 0.5s ease-out, filter 0.3s ease; /* Añadida transición para filter */
+        border-radius: 0 0 2px 2px; 
+        transition: height 0.5s ease-out, filter 0.3s ease; 
         z-index: 1; 
     }
 
-    /* Efecto de brillo en el líquido al hacer hover en la tarjeta */
     .tanque-card:hover .nivel-liquido {
         filter: brightness(1.15);
     }
 
-
     .bbls-label {
         position: absolute;
         width: 100%;
-        top: 55%; /* Ajustar para que quede bien centrado en el área visible del líquido */
+        top: 55%; 
         left: 0;
         transform: translateY(-50%);
         color: white;
         font-weight: bold;
-        font-size: 1rem; /* Un poco más pequeño para tanques más estilizados */
+        font-size: 1rem; 
         text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
         z-index: 3; 
         text-align: center;
-        pointer-events: none; /* Para que no interfiera con el hover de la tarjeta */
+        pointer-events: none; 
     }
 
     .porcentaje-display {
-        margin: 10px auto; /* Reducir margen superior si el tanque es más alto */
+        margin: 10px auto; 
         width: 70px;
         height: 70px;
         border-width: 5px;
@@ -190,16 +187,16 @@
 
     .info-tanque {
         text-align: left;
-        font-size: 0.88rem; /* Ligeramente más grande */
+        font-size: 0.88rem; 
         margin-top: 15px;
         width: 100%;
-        color: #495057; /* Un gris más oscuro para mejor lectura */
+        color: #495057; 
     }
-    .info-tanque strong { /* Nombre del TK */
+    .info-tanque strong { 
         font-size: 1.05rem; 
-        color: #005689; /* Mismo azul que el icono del título */
+        color: #005689; 
         display: block;
-        margin-bottom: 6px; /* Un poco más de espacio */
+        margin-bottom: 6px; 
     }
     .info-tanque span {
         display: block;
@@ -210,7 +207,6 @@
         color: #343a40;
         font-weight: 600;
     }
-    /* --- FIN DE ESTILOS DEL TANQUE ACTUALIZADOS --- */
 
     .total-producto-container h3 {
         background-color: rgba(255, 255, 255, 0.95);
@@ -223,7 +219,9 @@
 </style>
 
 <script>
-const datosPlanta = {{ datos_planta_para_js | tojson }};
+// Asegúrate que datos_planta_para_js se pase correctamente desde Flask
+// Si es None o undefined, inicializar como array vacío para evitar errores en el script
+const datosPlanta = {{ datos_planta_para_js | default('[]') | tojson }};
 
 const contenedorTanques = document.getElementById("contenedor-tanques");
 const filtroProductoSelect = document.getElementById("filtroProducto");
@@ -237,8 +235,11 @@ function cargarFiltros() {
 
     if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
         datosPlanta.forEach(d => {
-            if (d && d.PRODUCTO) productos.add(d.PRODUCTO);
-            if (d && d.TK) tanques.add(d.TK);
+            // Añadir validación de que 'd' es un objeto antes de acceder a propiedades
+            if (d && typeof d === 'object') { 
+                if (d.PRODUCTO) productos.add(d.PRODUCTO);
+                if (d.TK) tanques.add(d.TK);
+            }
         });
     } else {
         console.warn("datosPlanta no es un array válido o está vacío. No se cargarán filtros.");
@@ -260,13 +261,20 @@ function cargarFiltros() {
 }
 
 function crearVisualizacionTanque(data) {
+    // Añadir validación por si 'data' no es un objeto o es null
+    if (typeof data !== 'object' || data === null) {
+        console.error("Intento de crear tanque con datos inválidos:", data);
+        return document.createDocumentFragment(); // Devuelve un nodo vacío para no romper el flujo
+    }
+
     const bls60 = parseFloat(data.BLS_60) || 0;
     const maxCap = parseFloat(data.MAX_CAP) || 0;
-    const api = data.API !== null && data.API !== undefined && data.API !== "" ? data.API : 'N/A';
-    const bsw = data.BSW !== null && data.BSW !== undefined && data.BSW !== "" ? data.BSW + '%' : 'N/A';
-    const s = data.S !== null && data.S !== undefined && data.S !== "" ? data.S + '%' : 'N/A';
-    const producto = data.PRODUCTO || 'N/A';
-    const tkNombre = data.TK || 'N/A';
+    // Corrección para asegurar que N/A se muestre si el valor es null, undefined, o string vacío.
+    const api = (data.API !== null && data.API !== undefined && String(data.API).trim() !== "") ? data.API : 'N/A';
+    const bsw = (data.BSW !== null && data.BSW !== undefined && String(data.BSW).trim() !== "") ? data.BSW + '%' : 'N/A';
+    const s = (data.S !== null && data.S !== undefined && String(data.S).trim() !== "") ? data.S + '%' : 'N/A';
+    const producto = data.PRODUCTO || 'Desconocido'; // Producto por defecto
+    const tkNombre = data.TK || 'Desconocido'; // TK por defecto
 
     const porcentajeLlenado = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
     const porcentajeFormateado = porcentajeLlenado.toFixed(1);
@@ -274,23 +282,21 @@ function crearVisualizacionTanque(data) {
     let colorNivel;
     let colorBordePorcentaje;
 
-    // Lógica de colores para el porcentaje (igual que antes)
     if (porcentajeLlenado >= 95) {
-        colorNivel = 'linear-gradient(to top, #c0392b, #e74c3c)'; // Rojo
+        colorNivel = 'linear-gradient(to top, #c0392b, #e74c3c)'; 
         colorBordePorcentaje = "#e74c3c";
     } else if (porcentajeLlenado >= 80) {
-        colorNivel = 'linear-gradient(to top, #d35400, #e67e22)'; // Naranja
+        colorNivel = 'linear-gradient(to top, #d35400, #e67e22)'; 
         colorBordePorcentaje = "#e67e22";
     } else if (porcentajeLlenado >= 40) {
-        colorNivel = 'linear-gradient(to top, #f39c12, #f1c40f)'; // Amarillo
+        colorNivel = 'linear-gradient(to top, #f39c12, #f1c40f)'; 
         colorBordePorcentaje = "#f1c40f";
     } else if (porcentajeLlenado > 0) {
-         // Usar el mismo color base que el .nivel-liquido para consistencia
-        colorNivel = 'linear-gradient(to top, #2E7D32, #4CAF50)'; // Verde (o el color que elijas para el líquido)
-        colorBordePorcentaje = "#2ecc71"; // Verde para el borde del %
+        colorNivel = 'linear-gradient(to top, #2E7D32, #4CAF50)'; 
+        colorBordePorcentaje = "#2ecc71"; 
     } else {
         colorNivel = 'transparent';
-        colorBordePorcentaje = "#bdc3c7"; // Gris
+        colorBordePorcentaje = "#bdc3c7"; 
     }
     
     const mensajePorcentaje = porcentajeLlenado >= 100 ? "LLENO" : `${porcentajeFormateado}%`;
@@ -298,19 +304,18 @@ function crearVisualizacionTanque(data) {
     const card = document.createElement("div");
     card.className = "tanque-card";
 
-    // MODIFICACIÓN: Añadir atributo title para tooltip nativo del navegador
     card.setAttribute("title", 
         `Tanque: ${tkNombre}\n` +
         `Producto: ${producto}\n` +
-        `Volumen: ${bls60.toLocaleString()} BLS\n` +
-        `Capacidad: ${maxCap.toLocaleString()} BLS\n` +
+        `Volumen: ${bls60.toLocaleString('es-CO')} BLS\n` + // 'es-CO' para formato colombiano
+        `Capacidad: ${maxCap.toLocaleString('es-CO')} BLS\n` +
         `Llenado: ${porcentajeFormateado}%`
     );
 
     card.innerHTML = `
         <div class="grafico-tanque-container">
             <div class="nivel-liquido" style="height:${porcentajeLlenado}%; background: ${colorNivel};"></div>
-            <div class="bbls-label">${bls60.toLocaleString()} BLS</div>
+            <div class="bbls-label">${bls60.toLocaleString('es-CO')} BLS</div>
         </div>
         <div class="porcentaje-display" style="border-color: ${colorBordePorcentaje}; color: ${colorBordePorcentaje};">
             ${mensajePorcentaje}
@@ -318,7 +323,7 @@ function crearVisualizacionTanque(data) {
         <div class="info-tanque">
             <strong>${tkNombre}</strong>
             <span>${producto}</span>
-            <span><b>Max:</b> ${maxCap.toLocaleString()} BLS</span>
+            <span><b>Max:</b> ${maxCap.toLocaleString('es-CO')} BLS</span>
             <span><b>API:</b> ${api}</span>
             <span><b>BSW:</b> ${bsw}</span>
             <span><b>S:</b> ${s}</span>
@@ -350,14 +355,18 @@ function filtrar() {
                     totalBLSFiltrado += bls60;
                     productoParaTotal = productoSeleccionado;
                 } else { 
-                    productoParaTotal = ""; 
+                    // Si no se filtra por producto específico O se filtra también por tanque, no mostrar total de producto.
+                    // Para evitar mostrar total si se selecciona "Todos los Productos" y "Todos los Tanques"
+                    if (productoSeleccionado === "todos") {
+                        productoParaTotal = "";
+                    }
                 }
             }
         });
     }
 
     if (productoParaTotal) {
-        totalProductoDisplay.textContent = `Total ${productoParaTotal}: ${totalBLSFiltrado.toLocaleString()} BLS`;
+        totalProductoDisplay.textContent = `Total ${productoParaTotal}: ${totalBLSFiltrado.toLocaleString('es-CO')} BLS`;
         totalProductoContainer.style.display = 'block';
     } else {
         totalProductoDisplay.textContent = "";

@@ -19,6 +19,12 @@
             <i class="bi bi-graph-up page-title-icon"></i> Reporte Consolidado de Tránsito (NSV)
         </h1>
     </div>
+
+    {% if fecha_actualizacion_info %}
+    <p class="text-muted small mb-3" style="text-align: center;"> {# Centrado como en la imagen de planta #}
+        <i class="bi bi-info-circle-fill me-1"></i> {{ fecha_actualizacion_info }}
+    </p>
+{% endif %}
     
     <div class="view-toggle-buttons d-flex justify-content-center gap-2 my-4">
       <button id="showRefineriaBtn" class="btn btn-primary btn-lg active">En Camino a Refinería</button>

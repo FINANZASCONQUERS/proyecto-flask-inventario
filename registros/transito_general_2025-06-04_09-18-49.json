@@ -1,0 +1,20 @@
+{
+  "timestamp_iso": "2025-06-04T09:18:49.604566",
+  "fecha_guardado_str": "2025-06-04_09-18-49",
+  "tipo_transito": "general",
+  "usuario": "Juliana Torres",
+  "datos": [
+    {
+      "FECHA": "2025-06-04",
+      "GUIA": "",
+      "ORIGEN": "Carrizales",
+      "PRODUCTO": "Curdo Pesado",
+      "PLACA": "",
+      "API": "",
+      "BSW": "",
+      "TOV": "",
+      "GSV": "",
+      "NSV": "250"
+    }
+  ]
+}

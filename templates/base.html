@@ -86,7 +86,8 @@
                         </li>
                         {% endif %}
 
-                        {# Enlace a Historial Registros para Omar y Carlos #}
+                        {# ---- BLOQUE DEL ENLACE "Historial Registros" ELIMINADO ---- #}
+                        {# 
                         {% if session.get("email") in ["omar.morales@conquerstrading.com", "oci@conquerstrading.com"] %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'historial_registros' %}active{% endif %}" href="{{ url_for('historial_registros') }}">
@@ -94,6 +95,8 @@
                             </a>
                         </li>
                         {% endif %}
+                        #}
+                        {# ---- FIN DEL BLOQUE ELIMINADO ---- #}
                         
                         <li class="nav-item">
                             <a class="nav-link" href="javascript:history.back()">

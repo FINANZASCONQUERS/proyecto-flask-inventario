@@ -19,8 +19,11 @@
         <h1 class="mb-0 h2 page-title-text">
             <i class="bi bi-water page-title-icon"></i> Reporte Visual de Barcazas
         </h1>
-         {# MODIFICACIÓN: Añadir espacio para fecha de actualización si se implementa en el backend #}
-        <p id="fechaActualizacionBarcazas" class="mb-0 mt-2 text-muted" style="font-size: 0.9rem;"></p>
+        {% if fecha_actualizacion_info %}
+        <p class="text-muted small mb-3" style="text-align: center;"> 
+            <i class="bi bi-info-circle-fill me-1"></i> {{ fecha_actualizacion_info }}
+        </p>
+        {% endif %}
     </div>
 
     <div class="filter-section card shadow-sm my-4">
@@ -30,7 +33,6 @@
                 <select id="filtroTipoBarcaza" class="form-select form-select-sm d-inline-block w-auto" onchange="filtrarElementos()">
                     <option value="todos" selected>Todos (OPS y BITA)</option>
                     <option value="ops">OPS</option>
-                    <option value="ops_aggregated">OPS Agregado (Manzanillo)</option>
                     <option value="bita">BITA</option>
                 </select>
             </div>
@@ -64,7 +66,7 @@
         border-radius: 0.375rem; margin-bottom: 1.5rem; text-align: center;
     }
     .page-title-text { color: #343a40; font-weight: 600; }
-    .page-title-icon { color: #007bff; font-size: 1.2em; margin-right: 0.5rem; } /* Azul para agua/barcazas */
+    .page-title-icon { color: #007bff; font-size: 1.2em; margin-right: 0.5rem; } 
 
     .filter-section.card { background-color: rgba(255, 255, 255, 0.95); }
     .filter-section .form-label { font-weight: 500; color: #495057; }
@@ -72,43 +74,40 @@
     .visualizaciones-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); 
-        gap: 30px; /* Aumentado el gap */
+        gap: 30px; 
         padding: 10px 0;
     }
 
     .elemento-card {
         background: #ffffff; border-radius: 8px; padding: 20px; 
-        box-shadow: 0 3px 10px rgba(0,0,0,0.08); /* Sombra más suave */
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08); 
         display: flex; flex-direction: column; align-items: center;
         transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     }
     .elemento-card:hover { transform: translateY(-4px); box-shadow: 0 6px 15px rgba(0,0,0,0.12); }
 
-    /* --- ESTILOS PARA LA GRÁFICA DE BARCAZA (Personalizada) --- */
-    .grafico-barcaza-custom-container { /* Renombrado para claridad */
+    .grafico-barcaza-custom-container { 
         width: 200px; 
         height: 100px; 
         margin: 0 auto 15px auto;
         position: relative;
     }
     .barcaza-custom-casco {
-        width: 100%; height: 75%; /* Casco un poco más alto */
+        width: 100%; height: 75%; 
         position: absolute; bottom: 0;
-        background-color: #6c757d; /* Gris oscuro para el casco */
+        background-color: #6c757d; 
         border: 2px solid #495057; 
-        /* Curva suave en el fondo del casco */
         border-radius: 0 0 30px 30px / 0 0 15px 15px; 
         display: flex; align-items: flex-end; 
         overflow: hidden; 
-        box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2); /* Sombra interna para profundidad */
+        box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2); 
     }
-     /* Proa y Popa con SVG o pseudo-elementos más simples si es necesario */
-    .barcaza-custom-casco::before { /* Proa más estilizada */
+    .barcaza-custom-casco::before { 
         content: ''; position: absolute;
-        width: 40px; height: 100%; bottom: 0; left: -38px; /* Ajustar para que no haya hueco */
+        width: 40px; height: 100%; bottom: 0; left: -38px; 
         background-color: #6c757d; border: 2px solid #495057; border-right: none;
         transform: skewX(-20deg);
-        border-radius: 10px 0 0 10px; /* Redondear un poco la proa */
+        border-radius: 10px 0 0 10px; 
     }
     .barcaza-custom-superestructura {
         position: absolute; bottom: calc(75% - 2px); 
@@ -118,19 +117,18 @@
         z-index: 1;
         box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     }
-    .nivel-liquido-barcaza { /* Se mantiene similar */
+    .nivel-liquido-barcaza { 
         width: 100%; 
         transition: height 0.5s ease-out;
         position: relative; 
     }
-    .bbls-label-barcaza { /* Se mantiene similar */
+    .bbls-label-barcaza { 
         position: absolute; width: 100%; bottom: 5px; left: 0;
         color: white; font-weight: bold; font-size: 0.9rem;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         z-index: 2; text-align: center;
     }
 
-    /* --- ESTILOS PARA EL TANQUE INDUSTRIAL (Adaptado de reporte_planta) --- */
     .grafico-tank-industrial-container {
         width: 130px; height: 170px;
         border: 1px solid #b0b0b0; border-bottom: 2px solid #909090;
@@ -141,7 +139,7 @@
                     inset 0px -3px 4px rgba(0,0,0,0.08),
                     2px 2px 5px rgba(0,0,0,0.05);
     }
-    .grafico-tank-industrial-container .industrial-tank-lid { /* Tapa del tanque */
+    .grafico-tank-industrial-container .industrial-tank-lid { 
         content: ''; position: absolute; top: -1px; left: -1px; right: -1px;
         height: 22px; background: linear-gradient(to bottom, #d8d8d8, #b8b8b8);
         border-radius: 50% / 12px 12px 0 0;
@@ -149,9 +147,9 @@
         box-shadow: inset 0px 2px 2px rgba(255,255,255,0.6), 0px 1px 1px rgba(0,0,0,0.1);
         z-index: 2;
     }
-    .grafico-tank-industrial-container .industrial-tank-body { /* Cuerpo principal donde va el líquido */
+    .grafico-tank-industrial-container .industrial-tank-body { 
         width: 100%; height: 100%; position: relative;
-        display: flex; align-items: flex-end; /* Para que el líquido crezca desde abajo */
+        display: flex; align-items: flex-end; 
     }
     .grafico-tank-industrial-container .industrial-tank-liquid {
         width: 100%;
@@ -159,16 +157,15 @@
         z-index: 1;
     }
     .grafico-tank-industrial-container .industrial-tank-bls-label {
-        position: absolute; width: 100%; top: 55%; /* Ajustar para centrar */
+        position: absolute; width: 100%; top: 55%; 
         left: 0; transform: translateY(-50%);
         color: white; font-weight: bold; font-size: 1rem;
         text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
         z-index: 3; text-align: center;
     }
-    /* --- Fin estilos tanque industrial --- */
 
     .elemento-card:hover .nivel-liquido-barcaza,
-    .elemento-card:hover .industrial-tank-liquid { /* Efecto hover para ambos tipos */
+    .elemento-card:hover .industrial-tank-liquid { 
         filter: brightness(1.15);
     }
 
@@ -198,9 +195,7 @@
     const filtroElementoBarcazaSelect = document.getElementById("filtroElementoBarcaza");
     const totalProductoBarcazaDisplay = document.getElementById("totalProductoBarcaza");
     const totalProductoBarcazaContainer = document.getElementById("totalProductoBarcazaContainer");
-    const fechaActualizacionBarcazasP = document.getElementById("fechaActualizacionBarcazas");
-
-
+    
     async function cargarDatosBarcazas() {
         try {
             const response = await fetch("{{ url_for('obtener_datos_barcazas') }}");
@@ -208,7 +203,6 @@
             const data = await response.json();
             if (!data.success) throw new Error(data.message || "El backend reportó un error al obtener datos.");
 
-            // --- INICIO: PROCESAMIENTO DE DATOS OPS ---
             const processed_ops_data = [];
             let manzanillo_bls = 0;
             let manzanillo_max_cap = 0;
@@ -225,12 +219,14 @@
                     manzanillo_bls += (parseFloat(d.BLS_60) || 0);
                     manzanillo_max_cap += (parseFloat(d.MAX_CAP) || 0);
                     if(d.PRODUCTO) manzanillo_products.add(d.PRODUCTO);
-                    if(!isNaN(parseFloat(d.API))) manzanillo_apis.push(parseFloat(d.API));
-                    if(!isNaN(parseFloat(d.BSW))) manzanillo_bsws.push(parseFloat(d.BSW));
-                    if(!isNaN(parseFloat(d.S))) manzanillo_ss.push(parseFloat(d.S));
+                    const apiVal = parseFloat(d.API);
+                    const bswVal = parseFloat(d.BSW);
+                    const sVal = parseFloat(d.S);
+                    if(!isNaN(apiVal)) manzanillo_apis.push(apiVal);
+                    if(!isNaN(bswVal)) manzanillo_bsws.push(bswVal);
+                    if(!isNaN(sVal)) manzanillo_ss.push(sVal);
                     manzanillo_items_count++;
                 } else {
-                    // Otros tanques OPS, si los hubiera, se mostrarían como barcazas por defecto
                      processed_ops_data.push({...d, TIPO_FUENTE: "ops", visual_type: 'barge'});
                 }
             });
@@ -244,24 +240,17 @@
                     API: manzanillo_apis.length > 0 ? (manzanillo_apis.reduce((a, b) => a + b, 0) / manzanillo_apis.length).toFixed(1) : "",
                     BSW: manzanillo_bsws.length > 0 ? (manzanillo_bsws.reduce((a, b) => a + b, 0) / manzanillo_bsws.length).toFixed(1) : "",
                     S: manzanillo_ss.length > 0 ? (manzanillo_ss.reduce((a, b) => a + b, 0) / manzanillo_ss.length).toFixed(1) : "",
-                    TIPO_FUENTE: "ops_aggregated", // Para filtrado
-                    visual_type: 'barge' // Se verá como barcaza
+                    TIPO_FUENTE: "ops", 
+                    visual_type: 'barge' 
                 };
                 processed_ops_data.push(manzanillo_item);
             }
-            // --- FIN: PROCESAMIENTO DE DATOS OPS ---
 
             datosCompletosBarcazas = [
                 ...processed_ops_data,
                 ...(data.datos_bita || []).map(d => ({...d, TIPO_FUENTE: "bita", visual_type: 'barge'}))
             ];
             
-            // Simular fecha de actualización (idealmente vendría del backend)
-            if (fechaActualizacionBarcazasP) {
-                 const ahora = new Date();
-                 fechaActualizacionBarcazasP.innerHTML = `<i class="bi bi-clock-history"></i> Datos cargados: ${ahora.toLocaleString()}`;
-            }
-
             popularFiltrosBarcazas();
             filtrarElementos(); 
         } catch (error) {
@@ -283,7 +272,7 @@
         elementos.forEach(t => { const op = document.createElement("option"); op.value = t; op.textContent = t; filtroElementoBarcazaSelect.appendChild(op); });
     }
     
-    function crearVisualizacionElemento(data) { // Renombrada de crearVisualizacionBarcaza
+    function crearVisualizacionElemento(data) { 
         const bls_60_val = parseFloat(data.BLS_60) || 0;
         const max_cap_val = parseFloat(data.MAX_CAP) || 0;
         const porcentajeLlenado = max_cap_val > 0 ? Math.min((bls_60_val / max_cap_val) * 100, 100) : 0;
@@ -293,7 +282,7 @@
         if (porcentajeLlenado >= 95) { colorNivelCSS = 'linear-gradient(to top, #c0392b, #e74c3c)'; colorBordePorcentaje = "#e74c3c"; }
         else if (porcentajeLlenado >= 80) { colorNivelCSS = 'linear-gradient(to top, #d35400, #e67e22)'; colorBordePorcentaje = "#e67e22"; }
         else if (porcentajeLlenado >= 40) { colorNivelCSS = 'linear-gradient(to top, #f39c12, #f1c40f)'; colorBordePorcentaje = "#f1c40f"; }
-        else if (porcentajeLlenado > 0) { colorNivelCSS = 'linear-gradient(to top, #2E7D32, #4CAF50)'; colorBordePorcentaje = "#2ecc71"; } // Verde por defecto
+        else if (porcentajeLlenado > 0) { colorNivelCSS = 'linear-gradient(to top, #2E7D32, #4CAF50)'; colorBordePorcentaje = "#2ecc71"; } 
         else { colorNivelCSS = 'transparent'; colorBordePorcentaje = "#bdc3c7"; }
         
         const mensajePorcentaje = porcentajeLlenado >= 100 ? "LLENO" : `${porcentajeFormateado}%`;
@@ -334,11 +323,13 @@
         
         let tipoFuenteDisplay = "";
         if (data.TIPO_FUENTE) {
-            let textoTipo = data.TIPO_FUENTE.replace('_aggregated', '').toUpperCase();
-            if (data.TIPO_FUENTE === "ops_aggregated") textoTipo = "OPS (AGREGADO)";
+            let textoTipo = data.TIPO_FUENTE.toUpperCase();
             tipoFuenteDisplay = `<span style="font-size:0.75em; color:#7f8c8d; margin-left: 5px;">(${textoTipo})</span>`;
         }
 
+        const apiDisplay = (data.API !== undefined && data.API !== null && String(data.API).trim() !== "") ? data.API : 'N/A';
+        const bswDisplay = (data.BSW !== undefined && data.BSW !== null && String(data.BSW).trim() !== "") ? data.BSW + '%' : 'N/A';
+        const sDisplay = (data.S !== undefined && data.S !== null && String(data.S).trim() !== "") ? data.S + '%' : 'N/A';
 
         card.innerHTML = `
             ${visualHTML}
@@ -349,9 +340,9 @@
                 <strong>${data.TK} ${tipoFuenteDisplay}</strong> 
                 <span>${data.PRODUCTO || 'N/A'}</span>
                 <span><b>Max:</b> ${max_cap_val.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} BLS</span>
-                ${data.API ? `<span><b>API:</b> ${data.API}</span>` : ''}
-                ${data.BSW ? `<span><b>BSW:</b> ${data.BSW}%</span>` : ''}
-                ${data.S ? `<span><b>S:</b> ${data.S}%</span>` : ''}
+                <span><b>API:</b> ${apiDisplay}</span>
+                <span><b>BSW:</b> ${bswDisplay}</span>
+                <span><b>S:</b> ${sDisplay}</span>
             </div>
         `;
         return card;
