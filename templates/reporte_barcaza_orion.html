@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte Barcaza Orion - Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* Estilos para Orion (Azul) */
+:root { 
+    /* ... (se mantienen las variables azules para otros elementos si los hubiera) ... */
+    --color-primary: #0d6efd;
+    --color-primary-dark: #0a58ca;
+    --color-primary-light: rgba(13, 110, 253, 0.1);
+    --color-secondary: #2c3e50;
+    
+    /* Añadimos los colores verdes de BITA para usarlos en el header */
+    --color-success: #198754;
+    --color-success-dark: #146c43; /* Un verde más oscuro para el gradiente */
+
+    /* ... (el resto de variables no cambia) ... */
+    --color-warning: #ffc107;
+    --color-danger: #dc3545;
+    --color-light: #f8f9fa;
+    --color-border: #e0e5ec;
+    --border-radius: 0.75rem; 
+    --transition: all 0.3s ease;
+}
+    .reporte-container { padding: 2rem 0; background-color: #f8fafc; }
+    .reporte-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }
+    .reporte-title { font-size: 1.75rem; font-weight: 700; color: var(--color-secondary); }
+    .reporte-title-icon { color: var(--color-primary); font-size: 1.8rem; margin-right: 0.75rem; }
+    .reporte-subtitle { font-size: 0.95rem; color: #6c757d; }
+    .reporte-card { background-color: white; border-radius: var(--border-radius); box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.05); margin-bottom: 2rem; overflow: hidden; }
+    .reporte-card-header { 
+    padding: 1rem 1.5rem; 
+    /* CAMBIO: Ahora usa un gradiente verde */
+    background: linear-gradient(135deg, var(--color-success), var(--color-success-dark)); 
+    color: white; 
+    font-weight: 600; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+    .reporte-table { width: 100%; font-size: 0.9rem; }
+    .reporte-table thead th { background-color: var(--color-secondary); color: white; padding: 0.75rem 1rem; text-align: center; }
+    .reporte-table tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .reporte-table tbody tr:last-child td { border-bottom: none; }
+    .reporte-totals-row { background-color: var(--color-primary-light); font-weight: 600; }
+    .progress-wrapper { position: relative; height: 24px; background-color: #e9ecef; border-radius: 0.25rem; overflow: hidden; }
+    .progress-fill { height: 100%; transition: width 0.6s ease; }
+    .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: black; font-size: 0.75rem; font-weight: bold; z-index: 2; }
+    .bg-success { background-color: var(--color-success); }
+    .bg-warning { background-color: var(--color-warning); }
+    .bg-danger { background-color: var(--color-danger); }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .numeric-cell { font-family: 'Courier New', monospace; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="reporte-container">
+        <div class="container-xl">
+            <div class="reporte-header">
+                <div>
+                    <h1 class="reporte-title">
+                        <i class="bi bi-shield-fill-check reporte-title-icon"></i>
+                        Reporte de Inventario - Barcaza Orion
+                    </h1>
+                    <p class="reporte-subtitle"><i class="bi bi-calendar-check me-2"></i>{{ fecha_actualizacion_info }}</p>
+                </div>
+                <a href="{{ url_for('barcaza_orion') }}" class="btn btn-secondary btn-lg">
+                    <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
+                </a>
+            </div>
+
+        {% if barcazas_agrupadas %}
+            <div class="row g-4 justify-content-center">
+                {# Bucle principal que crea una tarjeta por cada grupo de barcaza #}
+                {% for nombre_barcaza, tanques_list in barcazas_agrupadas.items()|sort %}
+                <div class="col-12 col-lg-10 mb-4">
+                    <div class="reporte-card">
+                        <div class="reporte-card-header">
+                            <span>{{ nombre_barcaza }}</span>
+                            <span class="badge bg-light text-dark"><i class="bi bi-database me-1"></i>{{ tanques_list|length }} Tanques</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="reporte-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanque</th>
+                                        <th>Producto</th>
+                                        <th>MAX CAP</th>
+                                        <th>BLS @60</th>
+                                        <th style="min-width: 120px;">% Llenado</th>
+                                        <th>API</th>
+                                        <th>%BSW</th>
+                                        <th>%S</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {# Bucle interno para las filas de cada tanque #}
+                                    {% for fila in tanques_list %}
+                                    {% set max_cap = fila.MAX_CAP|float(default=0) %}
+                                    {% set bls_60 = fila.BLS_60|float(default=0) %}
+                                    {% set porcentaje = (bls_60 / max_cap * 100) if max_cap > 0 else 0 %}
+                                    <tr>
+                                        <td><strong>{{ fila.TK }}</strong></td>
+                                        <td>{{ fila.PRODUCTO }}</td>
+                                        <td class="text-right numeric-cell">{{ "%.2f"|format(max_cap) }}</td>
+                                        <td class="text-right numeric-cell">{{ "%.2f"|format(bls_60) }}</td>
+                                        <td>
+                                            <div class="progress-wrapper">
+                                                <div class="progress-fill {% if porcentaje >= 95 %}bg-danger{% elif porcentaje >= 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                                     style="width: {{ porcentaje|round(1) }}%;">
+                                                </div>
+                                                <span class="progress-text">{{ porcentaje|round(1) }}%</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.API|float(default=0)) }}</td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.BSW|float(default=0)) }}</td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.S|float(default=0)) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    
+                                    {# --- Fila de Totales y Promedios (se calcula aquí mismo) --- #}
+                                    {% set total_cap_grupo = tanques_list|map(attribute='MAX_CAP')|map('float')|sum %}
+                                    {% set total_bls_grupo = tanques_list|map(attribute='BLS_60')|map('float')|sum %}
+                                    {% set total_porc_grupo = (total_bls_grupo / total_cap_grupo * 100) if total_cap_grupo > 0 else 0 %}
+                                    {% set apis_validas = tanques_list|map(attribute='API')|reject('==', '')|map('float')|list %}
+                                    {% set bsws_validos = tanques_list|map(attribute='BSW')|reject('==', '')|map('float')|list %}
+                                    {% set s_validos = tanques_list|map(attribute='S')|reject('==', '')|map('float')|list %}
+                                    
+                                    <tr class="reporte-totals-row">
+                                        <td colspan="2"><strong>TOTAL / PROMEDIO</strong></td>
+                                        <td class="text-right numeric-cell"><strong>{{ "%.2f"|format(total_cap_grupo) }}</strong></td>
+                                        <td class="text-right numeric-cell"><strong>{{ "%.2f"|format(total_bls_grupo) }}</strong></td>
+                                        <td>
+                                            <div class="progress-wrapper">
+                                                <div class="progress-fill {% if total_porc_grupo >= 95 %}bg-danger{% elif total_porc_grupo >= 80 %}bg-warning{% else %}bg-success{% endif %}"
+                                                     style="width: {{ total_porc_grupo|round(1) }}%;">
+                                                </div>
+                                                <span class="progress-text">{{ total_porc_grupo|round(1) }}%</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center numeric-cell"><strong>{{ "%.1f"|format(apis_validas|sum / apis_validas|length) if apis_validas else 'N/A' }}</strong></td>
+                                        <td class="text-center numeric-cell"><strong>{{ "%.1f"|format(bsws_validos|sum / bsws_validos|length) if bsws_validos else 'N/A' }}</strong></td>
+                                        <td class="text-center numeric-cell"><strong>{{ "%.1f"|format(s_validos|sum / s_validos|length) if s_validos else 'N/A' }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center" role="alert">
+                <h4 class="alert-heading">No hay datos para mostrar</h4>
+                <p class="mb-0">No se encontró ningún registro de Barcaza Orion guardado. Por favor, completa y guarda una planilla primero.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

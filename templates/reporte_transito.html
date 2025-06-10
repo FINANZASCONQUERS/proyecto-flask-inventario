@@ -1,220 +1,381 @@
 {% extends "base.html" %}
 
-{% block title %}Reporte de Tránsito{% endblock %}
+{% block title %}Dashboard de Tránsito - Conquers Trading{% endblock %}
 
-{% block navbar_brand_text %}Reporte Tránsito{% endblock %}
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --color-primary: #0b8552;
+        --color-primary-light: rgba(11, 133, 82, 0.1);
+        --color-secondary: #2c3e50;
+        --color-success: #28a745;
+        --color-warning: #fd7e14;
+        --color-danger: #dc3545;
+        --color-info: #17a2b8;
+        --color-light: #f8f9fa;
+        --color-dark: #343a40;
+        --color-border: #e0e5ec;
+        --color-text-muted: #6c757d;
+        --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+        --border-radius: 0.75rem;
+        --transition: all 0.3s ease;
+    }
 
-{% block main_style %}
-    background-image: url('{{ url_for('static', filename='logo.jpeg') }}');
-    background-repeat: repeat;
-    background-size: 120px auto;
-    background-color: #e9ecef;
+    .dashboard-container {
+        padding: 2rem 0;
+    }
+
+    /* Header styles */
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--color-secondary);
+        display: flex;
+        align-items: center;
+    }
+
+    .dashboard-title-icon {
+        color: var(--color-primary);
+        font-size: 1.8rem;
+        margin-right: 0.75rem;
+    }
+
+    .dashboard-subtitle {
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+        margin-top: 0.5rem;
+    }
+
+    /* Summary card */
+    .summary-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--color-border);
+        transition: var(--transition);
+    }
+
+    .summary-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .summary-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1.5rem;
+        font-size: 1.75rem;
+    }
+
+    .summary-icon.truck {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .summary-info {
+        flex: 1;
+    }
+
+    .summary-label {
+        font-size: 0.95rem;
+        color: var(--color-text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .summary-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--color-secondary);
+        line-height: 1.2;
+    }
+
+    /* Report columns */
+    .report-columns {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    @media (min-width: 992px) {
+        .report-columns {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .report-column {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+    }
+
+    .column-header {
+        padding: 1.25rem;
+        background-color: var(--color-light);
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .column-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--color-secondary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .column-title i {
+        margin-right: 0.75rem;
+        color: var(--color-primary);
+    }
+
+    .column-total {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .origins-list {
+        padding: 1rem;
+    }
+
+    /* Origin card */
+    .origin-card {
+        margin-bottom: 1rem;
+        border-radius: calc(var(--border-radius) - 0.25rem);
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+        transition: var(--transition);
+    }
+
+    .origin-card:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .origin-title {
+        padding: 1rem;
+        background-color: var(--color-light);
+        font-weight: 600;
+        color: var(--color-secondary);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .products-list {
+        padding: 0.75rem;
+    }
+
+    .product-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0.5rem;
+        border-bottom: 1px dashed var(--color-border);
+    }
+
+    .product-item:last-child {
+        border-bottom: none;
+    }
+
+    .product-name {
+        font-size: 0.95rem;
+    }
+
+    .product-trips {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-left: 0.5rem;
+    }
+
+    .product-nsv {
+        font-weight: 600;
+        color: var(--color-secondary);
+    }
+
+    /* Empty state */
+    .empty-state {
+        padding: 2rem;
+        text-align: center;
+        color: var(--color-text-muted);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-
-    <div class="page-section-header shadow-sm">
-        <h1 class="mb-0 h2 page-title-text">
-            <i class="bi bi-graph-up page-title-icon"></i> Reporte Consolidado de Tránsito (NSV)
-        </h1>
-    </div>
-
-    {% if fecha_actualizacion_info %}
-    <p class="text-muted small mb-3" style="text-align: center;"> {# Centrado como en la imagen de planta #}
-        <i class="bi bi-info-circle-fill me-1"></i> {{ fecha_actualizacion_info }}
-    </p>
-{% endif %}
+<div class="dashboard-container">
+   <div class="container-xl my-4">
     
-    <div class="view-toggle-buttons d-flex justify-content-center gap-2 my-4">
-      <button id="showRefineriaBtn" class="btn btn-primary btn-lg active">En Camino a Refinería</button>
-      <button id="showEdsBtn" class="btn btn-primary btn-lg">En Camino a EDS</button>
-    </div>
-
-    <div id="alert-container-reporte" style="position: fixed; top: calc(4.5rem + 20px); right: 20px; z-index: 1050; width: auto; max-width: 400px;"></div>
-
-    {# Contenedor para Refinería #}
-    <div id="refineriaContentVisual">
-        <h2 class="text-center report-subtitle">Desglose: En Camino a Refinería</h2>
-        <div id="camionesRefineriaContainer" class="origenes-container my-3">
-            {# Los orígenes y sus productos se renderizarán aquí #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title-text">
+                <i class="bi bi-speedometer2 page-title-icon"></i>
+                <span>Dashboard de Tránsito</span>
+            </h1>
+            {% if fecha_actualizacion_info and "error" not in fecha_actualizacion_info|lower %}
+            <p class="page-subtitle mb-0 ms-1">
+                <i class="bi bi-info-circle-fill"></i> 
+                {{ fecha_actualizacion_info }}
+            </p>
+            {% endif %}
         </div>
-        <div class="total-general-container text-center my-4">
-            <h3 class="h4" id="refineriaGrandTotalVisual"></h3>
-        </div>
-    </div>
-
-    {# Contenedor para EDS #}
-    <div id="edsContentVisual" style="display: none;">
-        <h2 class="text-center report-subtitle">Desglose: En Camino a EDS</h2>
-        <div id="camionesEdsContainer" class="origenes-container my-3">
-            {# Los orígenes y sus productos se renderizarán aquí #}
-        </div>
-        <div class="total-general-container text-center my-4">
-            <h3 class="h4" id="edsGrandTotalVisual"></h3>
+        <div>
+            <a href="{{ url_for('transito') }}" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
+            </a>
         </div>
     </div>
 
+        <!-- Summary Card -->
+        <div class="summary-card fade-in">
+            <div class="summary-icon truck">
+                <i class="bi bi-truck"></i>
+            </div>
+            <div class="summary-info">
+                <div class="summary-label">Viajes Totales Registrados</div>
+                <div class="summary-value" id="grandTotalViajes">0</div>
+            </div>
+        </div>
+
+        <!-- Report Columns -->
+        <div class="report-columns">
+            <!-- Refinería Column -->
+            <div class="report-column fade-in">
+                <div class="column-header">
+                    <h3 class="column-title">
+                        <i class="bi bi-building"></i>
+                        En Camino a Refinería
+                    </h3>
+                    <div class="column-total" id="refineriaTotalDisplay">0.00 NSV</div>
+                </div>
+                <div id="refineria-content-container" class="origins-list">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+
+            <!-- EDSM Column -->
+            <div class="report-column fade-in">
+                <div class="column-header">
+                    <h3 class="column-title">
+                        <i class="bi bi-ev-station-fill"></i>
+                        En Camino a EDSM
+                    </h3>
+                    <div class="column-total" id="edsTotalDisplay">0.00 NSV</div>
+                </div>
+                <div id="eds-content-container" class="origins-list">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<style>
-    .page-section-header {
-        background-color: rgba(255, 255, 255, 0.97); padding: 1.25rem 1.5rem;
-        border-radius: 0.375rem; margin-bottom: 1.5rem; text-align: center;
-    }
-    .page-title-text { color: #343a40; font-weight: 600; }
-    .page-title-icon { color: #0b8552; font-size: 1.1em; margin-right: 0.5rem; }
-
-    .report-subtitle { color: #0b8552; font-weight: 500; margin-top: 1.5rem; margin-bottom: 1rem; }
-    
-    .view-toggle-buttons .btn.active { background-color: #0b8552; border-color: #0a7347; color: white; }
-    .view-toggle-buttons .btn:not(.active) { background-color: #6c757d; border-color: #5a6268; color: white; }
-
-    .origen-section { /* NUEVO: Contenedor para cada Origen */
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background-color: rgba(255,255,255,0.7);
-        border-radius: 0.375rem;
-        border: 1px solid #dee2e6;
-    }
-    .origen-title { /* NUEVO: Título para cada Origen */
-        color: #003770; /* Un azul más oscuro para el origen */
-        font-size: 1.4rem;
-        font-weight: 500;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid #003770;
-    }
-    .camiones-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Ajustado un poco */
-        gap: 15px; /* Reducido un poco el gap entre productos */
-    }
-    .camion-card {
-        background-color: #ffffff; /* Fondo blanco sólido para tarjetas */
-        border-radius: 8px; padding: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.07);
-        text-align: center;
-    }
-    .camion-card h5 { color: #0b8552; margin-bottom: 10px; font-size: 1.15rem; }
-    .camiones-representacion {
-        display: flex; flex-wrap: wrap; justify-content: center;
-        gap: 6px; margin-bottom: 10px; min-height: 35px;
-    }
-    .camion-icono { font-size: 1.8rem; color: #546E7A; margin: 1px; }
-    .camion-card .info-item { font-size: 0.9rem; color: #333; margin-bottom: 4px; }
-    .camion-card .info-item strong { font-weight: 600; }
-    .total-general-container h3 {
-        background-color: rgba(11, 133, 82, 0.9); color: white;
-        padding: 10px 20px; border-radius: 8px; display: inline-block;
-    }
-</style>
 
 <script>
     const datosConsolidados = {{ datos_consolidados | default({}) | tojson | safe }};
     const datosConteoCamiones = {{ datos_conteo_camiones | default({}) | tojson | safe }};
 
-    const refineriaContentEl = document.getElementById('refineriaContentVisual');
-    const edsContentEl = document.getElementById('edsContentVisual');
-    const showRefineriaBtnEl = document.getElementById('showRefineriaBtn');
-    const showEdsBtnEl = document.getElementById('showEdsBtn');
-    
-    const camionesRefineriaContainerEl = document.getElementById('camionesRefineriaContainer');
-    const refineriaGrandTotalVisualEl = document.getElementById('refineriaGrandTotalVisual');
-    const camionesEdsContainerEl = document.getElementById('camionesEdsContainer');
-    const edsGrandTotalVisualEl = document.getElementById('edsGrandTotalVisual');
+    function renderSection(destinationType, containerEl, totalDisplayEl) {
+        const originsData = datosConsolidados[destinationType] || {};
+        containerEl.innerHTML = '';
+        let sectionTotalNSV = 0;
+        const originNames = Object.keys(originsData).sort();
 
-    function renderizarVisualizacion(tipoDestino) {
-        const mainContainer = tipoDestino === 'Refinería' ? camionesRefineriaContainerEl : camionesEdsContainerEl;
-        const totalDisplayEl = tipoDestino === 'Refinería' ? refineriaGrandTotalVisualEl : edsGrandTotalVisualEl;
-        // Ahora origenesData es un objeto de Origenes, donde cada origen tiene un objeto de Productos
-        const origenesData = datosConsolidados[tipoDestino] || {}; 
-        
-        mainContainer.innerHTML = ''; 
-        let grandTotalNSVTipoDestino = 0;
-
-        const nombresOrigenes = Object.keys(origenesData).sort();
-
-        if (nombresOrigenes.length === 0) {
-            mainContainer.innerHTML = `<p class="text-center text-muted w-100">No hay datos de tránsito para ${tipoDestino.toLowerCase()}.</p>`;
-            totalDisplayEl.textContent = `Total General ${tipoDestino}: 0.00 NSV`;
-            return;
+        if (originNames.length === 0) {
+            containerEl.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-database-fill-exclamation" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No hay datos para esta sección</p>
+                </div>
+            `;
+            totalDisplayEl.textContent = '0.00 NSV';
+            return 0;
         }
 
-        nombresOrigenes.forEach(origen => {
-            const productosDataParaOrigen = origenesData[origen];
-            const camionesDataParaOrigen = datosConteoCamiones[tipoDestino]?.[origen] || {};
-            
-            // Crear una sección para este origen
-            const origenSectionDiv = document.createElement('div');
-            origenSectionDiv.className = 'origen-section';
-            
-            const origenTitleH3 = document.createElement('h3');
-            origenTitleH3.className = 'origen-title';
-            origenTitleH3.textContent = `Origen: ${origen}`;
-            origenSectionDiv.appendChild(origenTitleH3);
+        originNames.forEach(origin => {
+            const productsData = originsData[origin];
+            const originCard = document.createElement('div');
+            originCard.className = 'origin-card';
 
-            const productosGridDiv = document.createElement('div');
-            productosGridDiv.className = 'camiones-grid'; // Usamos la misma clase para el layout de productos
-
-            const productosOrdenados = Object.keys(productosDataParaOrigen).sort();
-
-            if (productosOrdenados.length === 0) {
-                 productosGridDiv.innerHTML = `<p class="text-center text-muted w-100 small">No hay productos para este origen.</p>`;
-            }
-
-            productosOrdenados.forEach(producto => {
-                const nsvTotalProducto = productosDataParaOrigen[producto];
-                const numCamiones = camionesDataParaOrigen[producto] || 0;
-                grandTotalNSVTipoDestino += nsvTotalProducto;
-
-                const card = document.createElement('div');
-                card.className = 'camion-card';
+            let productsHTML = '';
+            Object.keys(productsData).sort().forEach(product => {
+                const nsv = productsData[product];
+                const trips = datosConteoCamiones[destinationType]?.[origin]?.[product] || 0;
+                sectionTotalNSV += nsv;
                 
-                let camionesHtml = '';
-                const maxIconosAMostrar = 8; 
-                const numIconos = Math.min(numCamiones, maxIconosAMostrar);
-                for (let i = 0; i < numIconos; i++) {
-                    camionesHtml += '<i class="bi bi-truck camion-icono"></i>';
-                }
-                if (numCamiones > maxIconosAMostrar) {
-                    camionesHtml += `<span class="ms-1 fs-6 fw-bold text-muted">(+${numCamiones - maxIconosAMostrar})</span>`;
-                }
-
-                card.innerHTML = `
-                    <h5>${producto}</h5>
-                    <div class="camiones-representacion">
-                        ${camionesHtml || '<span class="text-muted small">Sin camiones</span>'}
+                productsHTML += `
+                    <div class="product-item">
+                        <div>
+                            <span class="product-name">${product}</span>
+                            <span class="product-trips">(${trips} viaje${trips !== 1 ? 's' : ''})</span>
+                        </div>
+                        <span class="product-nsv">
+                            ${nsv.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </span>
                     </div>
-                    <div class="info-item"><strong>${numCamiones}</strong> Camion(es)</div>
-                    <div class="info-item"><strong>${nsvTotalProducto.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> NSV</div>
                 `;
-                productosGridDiv.appendChild(card);
             });
-            origenSectionDiv.appendChild(productosGridDiv);
-            mainContainer.appendChild(origenSectionDiv);
+
+            originCard.innerHTML = `
+                <div class="origin-title">${origin}</div>
+                <div class="products-list">${productsHTML}</div>
+            `;
+            containerEl.appendChild(originCard);
         });
-        totalDisplayEl.textContent = `Total General ${tipoDestino}: ${grandTotalNSVTipoDestino.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} NSV`;
+
+        totalDisplayEl.textContent = `${sectionTotalNSV.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})} NSV`;
+        return sectionTotalNSV;
     }
 
-    showRefineriaBtnEl.addEventListener('click', () => {
-        refineriaContentEl.style.display = 'block';
-        edsContentEl.style.display = 'none';
-        showRefineriaBtnEl.classList.add('active');
-        showEdsBtnEl.classList.remove('active');
-        renderizarVisualizacion('Refinería');
-    });
+    function renderCompleteReport() {
+        // Render both sections
+        renderSection('Refinería', 
+            document.getElementById('refineria-content-container'), 
+            document.getElementById('refineriaTotalDisplay'));
+        
+        renderSection('EDSM', 
+            document.getElementById('eds-content-container'), 
+            document.getElementById('edsTotalDisplay'));
 
-    showEdsBtnEl.addEventListener('click', () => {
-        refineriaContentEl.style.display = 'none';
-        edsContentEl.style.display = 'block';
-        showEdsBtnEl.classList.add('active');
-        showRefineriaBtnEl.classList.remove('active');
-        renderizarVisualizacion('EDSM');
-    });
+        // Calculate and display total trips
+        let totalTrips = 0;
+        Object.values(datosConteoCamiones).forEach(destination => {
+            Object.values(destination).forEach(products => {
+                totalTrips += Object.values(products).reduce((sum, count) => sum + count, 0);
+            });
+        });
+
+        document.getElementById('grandTotalViajes').textContent = totalTrips;
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
-        showRefineriaBtnEl.click(); 
+        renderCompleteReport();
     });
 </script>
 {% endblock %}

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Planilla Barcaza Orion - Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style> 
+     :root { 
+        --color-primary: #0d6efd;
+        --color-primary-light: rgba(13, 110, 253, 0.1);
+        --color-secondary: #2c3e50;
+        --color-success: #198754;   
+        --color-light: #f8f9fa;
+        --color-border: #e0e5ec;
+        --border-radius: 0.75rem; 
+        --transition: all 0.3s ease; 
+    }
+    .barcaza-container { padding: 2rem 0; background-color: #f8fafc; }
+    .barcaza-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }
+    .barcaza-title { font-size: 1.75rem; font-weight: 700; color: var(--color-secondary); }
+    .barcaza-title-icon { color: var(--color-primary); font-size: 1.8rem; margin-right: 0.75rem; }
+    .barcaza-subtitle { font-size: 0.95rem; color: var(--color-text-muted); }
+    .barcaza-actions { display: flex; gap: 1rem; }
+    .barcaza-btn { padding: 0.75rem 1.5rem; font-weight: 500; border-radius: var(--border-radius); transition: var(--transition); display: flex; align-items: center; gap: 0.5rem; text-decoration: none; border: 1px solid transparent;}
+    .barcaza-btn:hover { transform: translateY(-2px); box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+    .barcaza-btn-secondary { background-color: white; border-color: var(--color-border); color: var(--color-secondary); }
+    .barcaza-btn-secondary:hover { background-color: var(--color-light); }
+    
+    /* --- REGLAS CORREGIDAS PARA EL BOTÓN VERDE --- */
+    .barcaza-btn-primary { 
+        background-color: var(--color-success); /* Usamos el color verde de éxito */
+        border-color: var(--color-success);
+        color: white; 
+    }
+    .barcaza-btn-primary:hover { 
+        background-color: #157347; /* Un verde más oscuro para el hover */
+        border-color: #157347; 
+    }
+    
+    .barcaza-card { background-color: white; border-radius: var(--border-radius); box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.05); margin-bottom: 2rem; }
+    .barcaza-card-header { padding: 1rem 1.5rem; background-color: var(--color-light); border-bottom: 1px solid var(--color-border); font-size: 1.1rem; font-weight: 600; color: var(--color-secondary); border-radius: var(--border-radius) var(--border-radius) 0 0; }
+    .barcaza-table { width: 100%; }
+    .barcaza-table thead th { background-color: var(--color-secondary); color: white; font-weight: 500; padding: 0.75rem 1rem; text-align: center; position: sticky; top: 0; z-index: 10; }
+    .barcaza-table tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .barcaza-table tbody tr:last-child td { border-bottom: none; }
+    
+    /* Celdas editables siguen usando el tema azul de Orion */
+    .editable-cell { 
+        background-color: var(--color-primary-light); 
+        border-radius: 0.25rem; 
+        padding: 0.5rem; 
+        transition: var(--transition); 
+        cursor: text; 
+        text-align: center; 
+    }
+    .editable-cell:hover { background-color: rgba(13, 110, 253, 0.2); }
+    .editable-cell:focus { 
+        background-color: rgba(13, 110, 253, 0.25); 
+        outline: 2px solid var(--color-primary); 
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25); 
+    }
+    .alert-container { position: fixed; top: 80px; right: 20px; z-index: 1100; width: 350px; }
+    @media (max-width: 992px) {
+        .barcaza-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        .barcaza-actions { width: 100%; flex-wrap: wrap; }
+        .barcaza-btn { flex: 1; min-width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{#--- Definición de la Macro para las tablas ---#}
+{% macro render_tanques_table(title, tanques_list, empty_message) %}
+<div class="barcaza-card">
+    <div class="barcaza-card-header">{{ title }}</div>
+    <div class="table-responsive">
+        <table class="barcaza-table">
+            <thead>
+                <tr>
+                    <th>Tanque</th>
+                    <th>Producto</th>
+                    <th>MAX CAP</th>
+                    <th>BLS @60</th>
+                    <th>API</th>
+                    <th>%BSW</th>
+                    <th>%S</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in tanques_list %}
+                <tr data-tk="{{ fila.TK }}" data-grupo="{{ fila.grupo }}">
+                    <td>{{ fila.TK }}</td>
+                    <td>{{ fila.PRODUCTO }}</td>
+                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-3">{{ empty_message }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endmacro %}
+
+<div class="barcaza-container">
+    <div class="container-xl">
+        <div class="barcaza-header">
+            <div>
+                <h1 class="barcaza-title">
+                    <i class="bi bi-shield-shaded barcaza-title-icon"></i>
+                    Planilla Barcaza Orion
+                </h1>
+                <p class="barcaza-subtitle">
+                    Editando inventario para el registro del día. Usuario: <strong>{{ nombre }}</strong>
+                </p>
+            </div>
+            <div class="barcaza-actions">
+                <a href="{{ url_for('reporte_barcaza') }}" class="barcaza-btn barcaza-btn-secondary">
+                    <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                    Ver Reporte
+                </a>
+                <button id="btnGuardarRegistro" class="barcaza-btn barcaza-btn-primary">
+                    <i class="bi bi-save2-fill"></i>
+                    Guardar Registro
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-container" class="alert-container"></div>
+
+        <div class="row g-4">
+            {#--- Columna Izquierda ---#}
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                {{ render_tanques_table("TANQUE PRINCIPAL (TK-101)", tanques_principales, "Tanque principal no disponible.") }}
+                {{ render_tanques_table("BARCAZA MANZANILLO (MGO)", tanques_man, "No hay tanques para Manzanillo.") }}
+                {{ render_tanques_table("BARCAZA CR", tanques_cr, "No hay tanques para CR.") }}
+            </div>
+
+            {#--- Columna Derecha ---#}
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                {{ render_tanques_table("BARCAZA MARGOTH", tanques_margoth, "No hay tanques para Margoth.") }}
+                {{ render_tanques_table("BARCAZA ODISEA", tanques_odisea, "No hay tanques para Odisea.") }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // =================================================================
+    //  GUARDADO DEL REGISTRO COMPLETO AL HACER CLIC EN EL BOTÓN PRINCIPAL
+    // =================================================================
+    document.getElementById('btnGuardarRegistro').addEventListener('click', async () => {
+        const btn = document.getElementById('btnGuardarRegistro');
+        const originalBtnText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
+
+        const datosAGuardar = [];
+        document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
+            if (!fila.dataset.tk) return; 
+
+            const grupo = fila.dataset.grupo;
+            const tkCompleto = fila.dataset.tk;
+            
+            const celdas = fila.getElementsByTagName('td');
+            datosAGuardar.push({
+                "TK": tkCompleto,
+                "PRODUCTO": celdas[1].textContent.trim(),
+                "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.') || 0),
+                "BLS_60": celdas[3].textContent.trim().replace(',', '.'),
+                "API": celdas[4].textContent.trim().replace(',', '.'),
+                "BSW": celdas[5].textContent.trim().replace(',', '.'),
+                "S": celdas[6].textContent.trim().replace(',', '.'),
+                "grupo": grupo
+            });
+        });
+
+        try {
+            const response = await fetch("{{ url_for('guardar_registro_barcaza') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(datosAGuardar)
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ message: `Error del servidor: ${response.status}` }));
+                throw new Error(errData.message);
+            }
+            
+            const result = await response.json();
+            if (result.success) {
+                mostrarAlerta('✅ ¡Registro de Barcaza Orion guardado exitosamente!', 'success');
+            } else {
+                throw new Error(result.message || "El servidor indicó un fallo.");
+            }
+        } catch (error) {
+            console.error('Error al guardar:', error);
+            mostrarAlerta(`❌ ${error.message}`, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
+        }
+    });
+
+    // =================================================================
+    //  AUTOGUARDADO DE CELDAS INDIVIDUALES AL PERDER EL FOCO (onblur)
+    // =================================================================
+    document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('blur', () => {
+            const row = cell.closest("tr");
+            if (!row || !row.dataset.tk) return;
+            
+            const tk = row.dataset.tk;
+            const grupo = row.dataset.grupo;
+            const field = cell.dataset.field;
+            let value = cell.innerText.trim().replace(',', '.');
+
+            fetch("{{ url_for('guardar_celda_barcaza') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                body: JSON.stringify({ tk, grupo, field, value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    cell.style.transition = 'all 0.3s ease';
+                    cell.style.backgroundColor = '#d1e7dd'; // Verde éxito
+                    setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+                } else {
+                    mostrarAlerta(data.message || 'Error al guardar celda', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error("Error al guardar celda:", error);
+                mostrarAlerta('Error de red al guardar la celda.', 'danger');
+            });
+        });
+    });
+
+    // =================================================================
+    //  FUNCIÓN PARA MOSTRAR ALERTAS (notificaciones)
+    // =================================================================
+    function mostrarAlerta(mensaje, tipo = 'info', duracion = 5000) {
+        const alertContainer = document.getElementById('alert-container');
+        if (!alertContainer) return;
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${tipo} alert-dismissible fade show shadow-lg`;
+        alertDiv.setAttribute('role', 'alert');
+        
+        const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
+        
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi ${iconClass} me-2"></i>
+                <div>${mensaje}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        alertContainer.appendChild(alertDiv);
+        
+        const bsAlert = new bootstrap.Alert(alertDiv);
+        setTimeout(() => {
+            // Comprobar si la alerta todavía existe en el DOM antes de intentar cerrarla
+            if (alertDiv.parentNode) {
+                 bsAlert.close();
+            }
+        }, duracion);
+    }
+</script>
+{% endblock %}

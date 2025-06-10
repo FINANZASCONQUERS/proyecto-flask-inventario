@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} - Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* Estilos para BITA (Verde) */
+    :root { 
+        --color-primary: #198754; /* Verde más oscuro para BITA */
+        --color-primary-light: rgba(25, 135, 84, 0.1);
+        --color-secondary: #2c3e50;
+        --color-success: #28a745;
+        --color-warning: #fd7e14;
+        --color-danger: #dc3545;
+        --color-info: #17a2b8;
+        --color-light: #f8f9fa;
+        --color-dark: #343a40;
+        --color-border: #e0e5ec;
+        --color-text-muted: #6c757d;
+        --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        --border-radius: 0.75rem; 
+        --transition: all 0.3s ease; 
+    }
+    .barcaza-container { padding: 2rem 0; background-color: #f8fafc; }
+    .barcaza-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }
+    .barcaza-title { font-size: 1.75rem; font-weight: 700; color: var(--color-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; }
+    .barcaza-title-icon { color: var(--color-primary); font-size: 1.8rem; margin-right: 0.75rem; }
+    .barcaza-subtitle { font-size: 0.95rem; color: var(--color-text-muted); }
+    .barcaza-actions { display: flex; gap: 1rem; }
+    .barcaza-btn { padding: 0.75rem 1.5rem; font-weight: 500; border-radius: var(--border-radius); transition: var(--transition); display: flex; align-items: center; gap: 0.5rem; text-decoration: none; border: 1px solid transparent;}
+    .barcaza-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .barcaza-btn-secondary { background-color: white; border-color: var(--color-border); color: var(--color-secondary); }
+    .barcaza-btn-secondary:hover { background-color: var(--color-light); }
+    .barcaza-btn-primary { background-color: var(--color-primary); color: white; }
+    .barcaza-btn-primary:hover { background-color: #157347; } /* Un poco más oscuro */
+    .barcaza-card { background-color: white; border-radius: var(--border-radius); box-shadow: var(--shadow-sm); border: 1px solid var(--color-border); margin-bottom: 2rem; }
+    .barcaza-card-header { padding: 1rem 1.5rem; background-color: var(--color-light); border-bottom: 1px solid var(--color-border); font-size: 1.1rem; font-weight: 600; color: var(--color-secondary); border-radius: var(--border-radius) var(--border-radius) 0 0; }
+    .barcaza-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .barcaza-table thead th { background-color: var(--color-secondary); color: white; font-weight: 500; padding: 0.75rem 1rem; text-align: center; position: sticky; top: 0; z-index: 10; }
+    .barcaza-table tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .barcaza-table tbody tr:last-child td { border-bottom: none; }
+    .editable-cell { 
+        background-color: var(--color-primary-light); /* Fondo claro para editable */
+        border-radius: 0.25rem; 
+        padding: 0.5rem; 
+        transition: var(--transition); 
+        cursor: text; 
+        text-align: center; 
+    }
+    .editable-cell:hover { background-color: rgba(25, 135, 84, 0.2); } /* Un poco más oscuro al pasar el ratón */
+    .editable-cell:focus { 
+        background-color: rgba(25, 135, 84, 0.25); 
+        outline: 2px solid var(--color-primary); 
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); 
+    }
+    .alert-container { position: fixed; top: 80px; right: 20px; z-index: 1100; width: 350px; }
+
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .barcaza-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        .barcaza-actions { width: 100%; flex-wrap: wrap; }
+        .barcaza-btn { flex: 1; min-width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="barcaza-container">
+    <div class="container-xl">
+        <div class="barcaza-header">
+            <div>
+                <h1 class="barcaza-title">
+                    <i class="bi bi-tsunami barcaza-title-icon"></i>
+                    {{ titulo }} {# Usamos el título pasado desde Flask #}
+                </h1>
+                <p class="barcaza-subtitle">
+                    Editando inventario para el registro del día. Usuario: <strong>{{ nombre }}</strong>
+                </p>
+            </div>
+            <div class="barcaza-actions">
+                <a href="{{ url_for('reporte_barcaza_bita') }}" class="barcaza-btn barcaza-btn-secondary">
+                    <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                    Ver Reporte
+                </a>
+                <button id="btnGuardarRegistro" class="barcaza-btn barcaza-btn-primary">
+                    <i class="bi bi-save2-fill"></i>
+                    Guardar Registro
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-container" class="alert-container"></div>
+
+        <div class="row g-4">
+            {# Barcaza Marinse #}
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                <div class="barcaza-card">
+                    <div class="barcaza-card-header">
+                        BARCAZA MARINSE
+                    </div>
+                    <div class="table-responsive">
+                        <table class="barcaza-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanque</th>
+                                    <th>Producto</th>
+                                    <th>MAX CAP</th>
+                                    <th>BLS @60</th>
+                                    <th>API</th>
+                                    <th>%BSW</th>
+                                    <th>%S</th> 
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in grupos["BARCAZA MARINSE"] %}
+                                <tr data-tk="{{ fila.TK }}">
+                                    <td>{{ fila.TK }}</td> {# Muestra el TK directamente #}
+                                    <td>{{ fila.PRODUCTO }}</td>
+                                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td> 
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-3">
+                                        No hay tanques para Barcaza Marinse.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {# Barcaza Oidech #}
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                <div class="barcaza-card">
+                    <div class="barcaza-card-header">
+                        BARCAZA OIDECH
+                    </div>
+                    <div class="table-responsive">
+                        <table class="barcaza-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanque</th>
+                                    <th>Producto</th>
+                                    <th>MAX CAP</th>
+                                    <th>BLS @60</th>
+                                    <th>API</th>
+                                    <th>%BSW</th>
+                                    <th>%S</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in grupos["BARCAZA OIDECH"] %}
+                                <tr data-tk="{{ fila.TK }}">
+                                    <td>{{ fila.TK }}</td> {# Muestra el TK directamente #}
+                                    <td>{{ fila.PRODUCTO }}</td>
+                                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td> 
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-3">
+                                        No hay tanques para Barcaza Oidech.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Guardado del registro completo de BITA
+    document.getElementById('btnGuardarRegistro').addEventListener('click', async () => {
+        const btn = document.getElementById('btnGuardarRegistro');
+        const originalBtnText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
+
+        const datosAGuardar = [];
+        // Seleccionar todas las filas de todas las tablas de barcazas en la página
+        document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
+            const tkCompleto = fila.dataset.tk;
+            // Solo procesar filas que tengan un TK (ignorando filas 'else' de "No hay tanques...")
+            if (!tkCompleto) return; 
+            
+            const celdas = fila.getElementsByTagName('td');
+            // Obtener los valores, asegurando que los numéricos se limpian si se editan
+            const bls60 = celdas[3].textContent.trim().replace(',', '.');
+            const api = celdas[4].textContent.trim().replace(',', '.');
+            const bsw = celdas[5].textContent.trim().replace(',', '.');
+            const s_val = celdas[6].textContent.trim().replace(',', '.');
+
+            // Validación básica para campos numéricos antes de enviar
+            let valid = true;
+            if (bls60 !== '' && isNaN(parseFloat(bls60))) { valid = false; mostrarAlerta(`Valor inválido en BLS @60 para ${tkCompleto}`, 'warning'); }
+            if (api !== '' && isNaN(parseFloat(api))) { valid = false; mostrarAlerta(`Valor inválido en API para ${tkCompleto}`, 'warning'); }
+            if (bsw !== '' && isNaN(parseFloat(bsw))) { valid = false; mostrarAlerta(`Valor inválido en %BSW para ${tkCompleto}`, 'warning'); }
+            if (s_val !== '' && isNaN(parseFloat(s_val))) { valid = false; mostrarAlerta(`Valor inválido en %S para ${tkCompleto}`, 'warning'); }
+
+            if (!valid) {
+                // Revertir estado del botón y salir si hay errores
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+                return; // Salir de la función si hay errores de validación
+            }
+
+            datosAGuardar.push({
+                "TK": tkCompleto,
+                "PRODUCTO": celdas[1].textContent.trim(),
+                "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.')), // MAX_CAP no es editable, se lee directo
+                "BLS_60": bls60,
+                "API": api,
+                "BSW": bsw,
+                "S": s_val,
+            });
+        });
+
+        if (datosAGuardar.length === 0) {
+            mostrarAlerta('No hay datos válidos para guardar.', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = originalBtnText;
+            return;
+        }
+
+        try {
+            const response = await fetch("{{ url_for('guardar_registro_bita') }}", {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest' // Importante para el decorador login_required
+                },
+                body: JSON.stringify(datosAGuardar)
+            });
+
+            if (response.status === 401) {
+                return response.json().then(errData => {
+                    throw new Error(errData.message || "Sesión expirada. Será redirigido al login.");
+                });
+            }
+            if (!response.ok) {
+                return response.json().then(errData => {
+                    throw new Error(errData.message || `Error del servidor: ${response.status}`);
+                });
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                mostrarAlerta('✅ ¡Registro de Barcaza BITA guardado exitosamente!', 'success');
+            } else {
+                throw new Error(result.message || "El servidor indicó un fallo.");
+            }
+        } catch (error) {
+            console.error('Error al guardar:', error);
+            mostrarAlerta(`❌ ${error.message}`, 'danger');
+            if (error.message.includes("Sesión expirada")) {
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('login') }}?next=" + encodeURIComponent(window.location.pathname);
+                }, 3000);
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnText;
+        }
+    });
+
+    // Manejador para el guardado de celda individual al perder el foco
+    document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('blur', () => {
+            const row = cell.closest("tr");
+            if (!row) return;
+            
+            const tk = row.dataset.tk;
+            const field = cell.dataset.field; // Aquí, 'data-field' es importante
+            let value = cell.innerText.trim();
+            
+            // Validación y limpieza para campos numéricos
+            if (['BLS_60', 'API', 'BSW', 'S'].includes(field)) {
+                value = value.replace(',', '.');
+                if (isNaN(parseFloat(value)) && value !== '') {
+                    mostrarAlerta(`Por favor ingrese un valor numérico válido para ${field} en ${tk}.`, 'warning');
+                    cell.focus();
+                    return;
+                }
+            }
+            
+            // No hay necesidad de enviar celda individualmente si el guardar completo lo hace
+            // Si quieres guardar por celda, necesitarías una ruta separada en Flask:
+            /*
+            fetch("{{ url_for('guardar_celda_bita') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                body: JSON.stringify({ tk, field, value })
+            })
+            .then(response => {
+                if (!response.ok) throw response;
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    cell.style.transition = 'all 0.3s ease';
+                    cell.style.backgroundColor = '#d1e7dd';
+                    setTimeout(() => { cell.style.backgroundColor = 'var(--color-primary-light)'; }, 1500);
+                } else {
+                    throw new Error(data.message || "Error al guardar celda");
+                }
+            })
+            .catch(error => {
+                console.error("Error al guardar celda:", error);
+                mostrarAlerta('Error al guardar los datos de la celda. Por favor intente nuevamente.', 'danger');
+            });
+            */
+        });
+    });
+
+    // Función para mostrar alertas (copiada de otros archivos)
+    function mostrarAlerta(mensaje, tipo = 'info', duracion = 5000) {
+        const alertContainer = document.getElementById('alert-container');
+        if (!alertContainer) return;
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${tipo} alert-dismissible fade show shadow-lg`;
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = `
+            <div class="d-flex align-items-center">
+        <i class="bi ${tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : tipo === 'warning' ? 'bi-exclamation-diamond-fill' : 'bi-info-circle-fill'} me-2"></i>
+        <div>${mensaje}</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+`;
+        alertContainer.appendChild(alert);
+        setTimeout(() => { 
+            if (alert.parentNode) { 
+                const bsAlert = new bootstrap.Alert(alert); 
+                bsAlert.close(); 
+            } 
+        }, duracion);
+    }
+</script>
+{% endblock %}

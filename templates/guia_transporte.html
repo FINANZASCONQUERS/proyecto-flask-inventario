@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>GUÍA TRANSPORTE MINMINAS</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+        /* Estilos Generales y de la Guía */
+        @page { size: landscape; margin: 0; }
+        html, body { 
+            margin: 0; padding: 0;
+            font: 12pt ARIAL, sans-serif;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            line-height: 1.2;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("{{ url_for('static', filename='Fondo.webp') }}") no-repeat center center;
+            background-size: 1590px 900px;
+            opacity: 0.50;
+            z-index: -1;
+        }
+        #acciones { 
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        #acciones button {
+            padding: 8px 15px;
+            margin-right: 8px;
+            background: #004080;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        #acciones button:hover {
+            background: #0066cc;
+        }
+        
+        /* Estilo para el botón de Cerrar Sesión */
+        #boton-logout {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1001;
+            padding: 8px 15px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        #boton-logout:hover {
+            background-color: #c82333;
+        }
+        
+        #selloInput { -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield; }
+        #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
+        
+        /* Estilos de Impresión */
+        @media print {
+            #acciones, #boton-logout { display: none !important; }
+            body::before { display: none; }
+            .campo, .hoja { border: none !important; }
+            select { background: transparent !important; border: none !important; }
+            body { transform: rotate(0deg) !important; }
+            ::placeholder { color: transparent !important; }
+            input[placeholder]:empty:before { content: none !important; }
+            #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { display: none !important; }
+            @page { size: letter; margin: 0; }
+             body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
+            #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+        }
+        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 1.5cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+        .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
+        .fila { display: flex; margin-bottom: 0.4cm; }
+        .fila.pequeno { margin-bottom: 0.3cm; }
+        .fila.muy-pequeno { margin-bottom: 0.20cm; }
+        .campo { flex: none; border: 1px solid #333; padding: 4px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; text-align: center; background: white; border-radius: 5px; }
+        label { font-weight: bold; font-size: 9pt; margin-bottom: 2px; text-align: center; text-transform: uppercase; }
+        .campo input::placeholder, .campo select::placeholder { color: transparent; }
+        .campo input:focus::placeholder, .campo select:focus::placeholder { color: #999; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none; }
+        select::-ms-expand { display: none; }
+        .campo input, .campo select, .campo textarea { width: 100%; border: none; background: transparent; font: inherit; text-transform: uppercase; outline: none; resize: none; text-align: center; font-weight: bold; padding: 0; }
+        .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
+        .descripcion-producto, .volumen { font-weight: bold; }
+        .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
+        .lugar-fecha { width: 9cm; height: 1.1cm; font-size: 14pt }
+        .planta-productor { width: 9cm; height: 1cm;font-size: 14pt }
+        .factura-remision { width: 3.5cm; height: 1cm;font-size: 16pt  }
+        .despacho { width: 15cm; height: 1cm; font-size: 14pt }
+        .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
+        .direccion { width: 15cm; height: 1cm; font-size: 14pt }
+        .ciudad { width: 11.7cm; height: 1cm; font-size: 12pt }
+        .nombre-conductor { width: 18cm; height: 1cm; font-size: 14pt }
+        .cedula { width: 9cm; height: 1cm; font-size: 14pt }
+        .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
+        .placa-cabezote { width: 9.5cm; height: 1cm; font-size: 16pt }
+        .placa-tanque { width: 7.5cm; height: 1cm; font-size: 16pt }
+        .lugar-origen { width: 9cm; height: 1cm; font-size: 14pt }
+        .fecha-hora-salida { width: 12cm; height: 1cm;font-size: 14pt  }
+        .hora { width: 3.2cm; height: 1cm; font-size: 14pt }
+        .lugar-destino { width: 10cm; height: 1cm; font-size: 14pt }
+        .horas-vigencia { width: 11cm; height: 1cm; font-size: 14pt }
+        .descripcion-producto { width: 18cm; height: 3.8cm; padding: 25px; font-size: 18pt; }
+        .volumen { width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
+        .volumen div { margin-bottom: 25px; }
+        .volumen div:last-child { margin-bottom: 0; }
+        .observaciones { width: 18cm; height: 1.6cm; font-size: 18pt; position: relative;  }
+        .zona-frontera { width: 3.7cm; height: 1cm; }
+        .grupo-producto { display: flex; flex-direction: column; width: 100%; height: 100%; }
+        .datos-producto { display: flex; justify-content: space-between; margin-top: 0.2cm; }
+        .dato-producto { display: flex; flex-direction: column; align-items: center; width: 2.2cm; }
+        .dato-producto input { width: 100%; border: none; text-align: center; }
+    </style>
+</head>
+<body>
+
+<a id="boton-logout" href="{{ url_for('logout') }}">
+    <i class="bi bi-box-arrow-right"></i>
+    Cerrar Sesión
+</a> 
+
+<div id="acciones">
+    </div>
+
+<div id="contenedor-guia">
+  <div class="hoja">
+    <div class="fila">
+      <div class="campo lugar-fecha sin-borde"><input id="fechaExpEDICION" readonly></div>
+      <div class="campo planta-productor sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+      <div class="campo factura-remision sin-borde"><input placeholder="FACTURA O REMISIÓN N°"></div>
+    </div>
+    <div class="fila">
+      <div class="campo despacho sin-borde">
+        <select id="clienteSelect" onchange="autocompletarCliente()" class="sin-borde">
+          <option value="">SELECCIONE UN CLIENTE</option>
+          </select>
+      </div>
+      <div class="campo codigo-sicom sin-borde"><input placeholder="CÓDIGO SICOM"></div>
+    </div>
+    <div class="fila">
+      <div class="campo direccion sin-borde"><input id="direccionCliente" placeholder="DIRECCIÓN"></div>
+      <div class="campo ciudad sin-borde"><input id="ciudadCliente" placeholder="CIUDAD"></div>
+    </div>
+    <div class="fila pequeno">
+      <div class="campo nombre-conductor sin-borde">
+        <input id="conductorSelect" list="listaConductores" placeholder="NOMBRE DEL CONDUCTOR">
+        <datalist id="listaConductores"></datalist>
+      </div>
+      <div class="campo cedula sin-borde">
+        <input id="cedulaConductor" list="listaCedulas" placeholder="CÉDULA DEL CONDUCTOR">
+        <datalist id="listaCedulas"></datalist>
+      </div>
+    </div>
+    <div class="fila">
+      <div class="campo empresa-transportadora sin-borde"><input placeholder="EMPRESA TRANSPORTADORA"></div>
+      <div class="campo placa-cabezote sin-borde"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
+      <div class="campo placa-tanque sin-borde"><input placeholder="PLACA DEL TANQUE"></div>
+    </div>
+    <div class="fila">
+      <div class="campo lugar-origen sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+      <div class="campo fecha-hora-salida sin-borde"><input id="fechaHoraSalida" readonly></div>
+      <div class="campo hora sin-borde"><input id="horaSalida" readonly></div>
+    </div>
+    <div class="fila">
+      <div class="campo lugar-destino sin-borde"><input id="destinoDireccion" placeholder="DESTINO"></div>
+      <div class="campo horas-vigencia sin-borde"><input placeholder="HORAS DE VIGENCIA"></div>
+    </div>
+    <div class="fila muy-pequeno">
+      <div class="campo descripcion-producto sin-borde">
+        <div class="grupo-producto">
+          <select id="productoSelect" class="select-producto" onchange="mostrarProducto()"></select>
+          <div class="datos-producto">
+            <div class="dato-producto"><span>TEMP F</span><input id="tempF" class="sin-borde"></div>
+            <div class="dato-producto"><span>API OBS</span><input id="apiObs" class="sin-borde"></div>
+            <div class="dato-producto"><span>API CORR</span><input id="apiCorr" class="sin-borde"></div>
+            <div class="dato-producto"><span>UN</span><input id="unidadProducto" class="sin-borde"></div>
+          </div>
+        </div>
+      </div>
+      <div class="campo volumen sin-borde">
+        <div><label for="barriles" style="display:inline; font-weight:bold; font-size:12pt;">BBL NSV:</label> <input id="barriles" readonly style="width:3cm; border:none; display:inline; text-align:left;"></div>
+        <div><label for="galones" style="display:inline; font-weight:bold; font-size:12pt;">GAL NETOS:</label> <input id="galones" oninput="convertirABarriles()" style="width:3cm; border:none; display:inline; text-align:left;"></div>  
+      </div>
+    </div>
+    <div class="fila" style="position: relative;">
+      <div class="campo observaciones">
+        <textarea class="sin-borde" style="height: 70%;"></textarea>
+        <div style="text-align: left; margin-top: 5px; height: 1.6cm;">
+          <strong>SELLOS:</strong> 
+          <input id="selloInput" type="text" style="width:14cm; height:1.6cm; text-align:left; -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalAgregarCliente" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLabel">Agregar Nuevo Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formAgregarCliente">
+            <div class="mb-3">
+                <label for="nombreNuevoCliente" class="form-label">Nombre del Cliente</label>
+                <input type="text" class="form-control" id="nombreNuevoCliente" required>
+            </div>
+            <div class="mb-3">
+                <label for="direccionNuevoCliente" class="form-label">Dirección</label>
+                <input type="text" class="form-control" id="direccionNuevoCliente" required>
+            </div>
+            <div class="mb-3">
+                <label for="ciudadNuevoCliente" class="form-label">Ciudad y Departamento</label>
+                <input type="text" class="form-control" id="ciudadNuevoCliente" required>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarCliente">Guardar Cliente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+<script>
+    let conductores=[], clientes=[], productos=[];
+
+    async function cargarDatos(){
+        const [cRes,cliRes,pRes]=await Promise.all([
+            fetch("{{ url_for('static', filename='Conductores.json') }}"),
+            fetch("{{ url_for('static', filename='Clientes.json') }}"),
+            fetch("{{ url_for('static', filename='Producto.json') }}")
+        ]);
+        conductores=await cRes.json();
+        clientes=await cliRes.json();
+        productos=await pRes.json();
+        
+        const dl=document.getElementById('listaConductores');
+        const dc=document.getElementById('listaCedulas');
+        conductores.forEach(c=>{
+            dl.insertAdjacentHTML('beforeend',`<option value="${c.CONDUCTOR}" data-cedula="${c.CEDULA}" data-placa="${c.PLACA}"></option>`);
+            dc.insertAdjacentHTML('beforeend',`<option value="${c.CEDULA}" data-nombre="${c.CONDUCTOR}" data-placa="${c.PLACA}"></option>`);
+        });
+        const prodSel=document.getElementById('productoSelect');
+        productos.forEach(p=>prodSel.insertAdjacentHTML('beforeend',`<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
+        
+        actualizarDropdownClientes();
+        configurarEventosConductores();
+    }
+
+    function actualizarDropdownClientes() {
+        const cliSel = document.getElementById('clienteSelect');
+        cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
+        
+        clientes.forEach(c => cliSel.insertAdjacentHTML('beforeend',`<option value="${c.NOMBRE_CLIENTE}">${c.NOMBRE_CLIENTE}</option>`));
+        
+        cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        await cargarDatos();
+
+        const clienteSelect = document.getElementById('clienteSelect');
+        const modalEl = document.getElementById('modalAgregarCliente');
+        const modal = new bootstrap.Modal(modalEl);
+        const btnGuardarCliente = document.getElementById('btnGuardarCliente');
+        const formAgregarCliente = document.getElementById('formAgregarCliente');
+
+        clienteSelect.addEventListener('change', function() {
+            if (this.value === 'AGREGAR_CLIENTE') {
+                formAgregarCliente.reset();
+                modal.show();
+                this.value = "";
+            }
+        });
+
+        btnGuardarCliente.addEventListener('click', async () => {
+            const nombre = document.getElementById('nombreNuevoCliente').value.trim();
+            const direccion = document.getElementById('direccionNuevoCliente').value.trim();
+            const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
+
+            if (!nombre || !direccion || !ciudad) {
+                alert('Por favor, complete todos los campos.');
+                return;
+            }
+
+            try {
+                const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, direccion, ciudad })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    clientes.push(result.nuevo_cliente);
+                    clientes.sort((a, b) => a.NOMBRE_CLIENTE.localeCompare(b.NOMBRE_CLIENTE));
+                    
+                    actualizarDropdownClientes();
+                    clienteSelect.value = result.nuevo_cliente.NOMBRE_CLIENTE;
+                    clienteSelect.dispatchEvent(new Event('change'));
+
+                    modal.hide();
+                    alert(result.message);
+                } else {
+                    alert(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                alert('Error de conexión al intentar guardar el cliente.');
+                console.error('Error:', error);
+            }
+        });
+
+        // --- El resto de la inicialización de la página ---
+        const now = new Date();
+        const dOpt = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
+        // Usar la fecha actual real
+        const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
+        document.getElementById('fechaExpEDICION').value = `CARTAGENA, ${fechaActual}`;
+        
+        actualizarHoraAutomaticamente();
+        setInterval(actualizarHoraAutomaticamente, 60000);
+
+        const contenedorAcciones = document.getElementById('acciones');
+        if(contenedorAcciones){
+            const botonDescarga = document.createElement('button');
+            botonDescarga.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF';
+            botonDescarga.onclick = descargarPDF;
+            contenedorAcciones.appendChild(botonDescarga);
+        }
+    });
+
+    function configurarEventosConductores() {
+        const conductorInput = document.getElementById('conductorSelect');
+        const cedulaInput = document.getElementById('cedulaConductor');
+        const placaInput = document.getElementById('placaCabezote');
+        conductorInput.addEventListener('change', function() {
+            const selectedOption = document.querySelector(`#listaConductores option[value="${this.value}"]`);
+            if (selectedOption) {
+                cedulaInput.value = selectedOption.getAttribute('data-cedula') || '';
+                placaInput.value = selectedOption.getAttribute('data-placa') || '';
+            }
+        });
+        cedulaInput.addEventListener('change', function() {
+            const selectedOption = document.querySelector(`#listaCedulas option[value="${this.value}"]`);
+            if (selectedOption) {
+                conductorInput.value = selectedOption.getAttribute('data-nombre') || '';
+                placaInput.value = selectedOption.getAttribute('data-placa') || '';
+            }
+        });
+    }
+
+    function autocompletarCliente(){
+        if(document.getElementById('clienteSelect').value === 'AGREGAR_CLIENTE') return;
+        const nom = document.getElementById('clienteSelect').value;
+        const cli = clientes.find(c=>c.NOMBRE_CLIENTE===nom);
+        document.getElementById('direccionCliente').value = cli ? cli.DIRECCION : '';
+        document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
+        document.getElementById('destinoDireccion').value = cli ? cli.DIRECCION : '';
+    }
+
+    function mostrarProducto(){
+        const nom=document.getElementById('productoSelect').value;
+        const p=productos.find(x=>x.PRODUCTO===nom);
+        if(p){
+            document.getElementById('tempF').value=p.TempF;
+            document.getElementById('apiObs').value=p.API_Obs;
+            document.getElementById('apiCorr').value=p.API_Cor;
+            document.getElementById('unidadProducto').value=p.UN;
+        }
+    }
+
+    function convertirABarriles(){
+        const gal=parseFloat(document.getElementById('galones').value.replace(/,/g, '.'));
+        if(!isNaN(gal)){
+            document.getElementById('barriles').value=(gal/42).toFixed(2).replace('.', ',');
+        }
+    }
+
+    function descargarPDF(){
+        const hoy=new Date().toISOString().slice(0,10);
+        html2pdf().set({
+            margin:[1.5,1,1,1],
+            filename:`Guia-${hoy}.pdf`,
+            html2canvas:{ scale:2, width:2570, height:1650, useCORS:true },
+            jsPDF:{ unit:'mm', format:'a4', orientation:'landscape' }
+        }).from(document.getElementById('contenedor-guia')).save();
+    }
+
+    function actualizarHoraAutomaticamente() {
+        const ahora = new Date();
+        const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
+        const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Bogota' };
+        const fechaTexto = ahora.toLocaleDateString('es-CO', opcionesFecha).toUpperCase();
+        const horaTexto = ahora.toLocaleTimeString('es-CO', opcionesHora).toUpperCase();
+        document.getElementById('fechaHoraSalida').value = fechaTexto;
+        document.getElementById('horaSalida').value = horaTexto;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const selloInput = document.getElementById('selloInput');
+        if(selloInput) {
+            selloInput.addEventListener('input', function(e) {
+                let valor = this.value.replace(/[^\d]/g, '');
+                valor = valor.substring(0, 36);
+                let valorFormateado = '';
+                for (let i = 0; i < valor.length; i++) {
+                    if (i > 0 && i % 6 === 0) {
+                        valorFormateado += '-';
+                    }
+                    valorFormateado += valor[i];
+                }
+                this.value = valorFormateado;
+            });
+            selloInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                const numeros = text.replace(/[^\d]/g, '').substring(0, 36);
+                document.execCommand('insertText', false, numeros);
+            });
+        }
+    });
+</script>
+</body>
+</html>
