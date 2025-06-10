@@ -1,148 +1,174 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard de Reportes{% endblock %}
-
 {% block navbar_brand_text %}Dashboard{% endblock %}
 
 {% block main_style %}
-    /* Estilo para el fondo del área principal (<main>) */
-    background-image: url('{{ url_for('static', filename='logo.jpeg') }}');
-    background-repeat: repeat;
-    background-size: 120px auto; /* Reducido para que se vea más el logo */
-    background-color: #e9ecef;
+    background-color: #f4f7f9;
+    font-family: 'Poppins', sans-serif;
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-xl my-4">
 
-    <div class="page-section-header shadow-sm">
-        <div class="d-flex justify-content-start align-items-center"> 
-            <h1 class="mb-0 h2 page-title-text">
-                <i class="bi bi-grid-1x2-fill page-title-icon"></i> Dashboard General de Reportes
-            </h1>
-        </div>
+    <div class="mb-4">
+        <h1 class="h2 page-title-text mb-0">
+            <i class="bi bi-grid-1x2-fill me-2 text-primary"></i> Dashboard General de Reportes
+        </h1>
+        <p class="text-muted">Resumen de los últimos registros guardados en el sistema.</p>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="mt-3">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                <i class="bi {% if category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'success' %}bi-check-circle-fill{% elif category == 'warning' %}bi-exclamation-diamond-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-
-    <div class="row mt-4">
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card dashboard-card h-100 shadow-sm">
+    <div class="row g-4">
+        <!-- Tarjeta Planta -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card dashboard-card h-100">
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title text-primary"><i class="bi bi-buildings-fill me-2"></i>Reporte de Planta</h5>
-                    {% if planta_summary and (planta_summary.datos_planilla or planta_summary.datos) %}
-                        {# Esta línea ya estaba y funciona para planta #}
-                        <p class="card-text small text-muted">Último registro del <strong>{{ planta_summary.get('fecha', '').split('_')[0] if planta_summary.get('fecha') != 'N/A' else 'N/A' }}</strong> por {{ planta_summary.usuario if planta_summary.usuario != 'N/A' else 'N/A' }}.</p>
-                        <p class="card-text"><i class="bi bi-fuel-pump"></i> Contiene <strong>{{ (planta_summary.datos_planilla or planta_summary.datos)|length }}</strong> tanques.</p>
-                    {% else %}
-                        <p class="card-text">No hay datos de planta registrados recientemente.</p>
-                    {% endif %}
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill"></i> Ver Reporte</a>
+                    <div class="card-header-custom">
+                        <div class="card-icon-wrapper icon-planta">
+                            <i class="bi bi-buildings-fill"></i>
+                        </div>
+                        <h5 class="card-title">Reporte de Planta</h5>
+                    </div>
+                    <ul class="list-group list-group-flush flex-grow-1">
+                        <li class="list-group-item">
+                            <span class="item-label">Último Registro:</span>
+                            <span class="item-value">
+                                {% if planta_summary and planta_summary.fecha != 'N/A' %}{{ planta_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Usuario:</span>
+                            <span class="item-value">{{ planta_summary.usuario if planta_summary.usuario else 'N/A' }}</span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Tanques Registrados:</span>
+                            <span class="item-value"><strong>{{ (planta_summary.datos or [])|length }}</strong></span>
+                        </li>
+                    </ul>
+                    <div class="card-footer-custom">
+                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card dashboard-card h-100 shadow-sm">
+        <!-- Tarjeta Tránsito -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card dashboard-card h-100">
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title text-info"><i class="bi bi-tsunami me-2"></i>Reporte de Barcazas</h5>
-                    
-                    {# ---- LÍNEA AÑADIDA/MODIFICADA PARA BARCAZAS ---- #}
-                    {% if barcaza_ops_summary and barcaza_ops_summary.fecha and barcaza_ops_summary.fecha != "N/A" and barcaza_ops_summary.usuario and barcaza_ops_summary.usuario != "N/A" %}
-                        <p class="card-text small text-muted">Último registro del <strong>{{ barcaza_ops_summary.get('fecha', '').split('_')[0] }}</strong> por {{ barcaza_ops_summary.usuario }}.</p>
-                    {% elif barcaza_ops_summary or barcaza_bita_summary %} 
-                        {# Si no hay fecha/usuario pero sí otros datos, mostrar el resumen general #}
-                         <p class="card-text small text-muted">Resumen de los últimos datos de barcazas.</p>
-                    {% endif %}
-                    {# ---- FIN LÍNEA AÑADIDA/MODIFICADA ---- #}
-
-                    {% if barcaza_ops_summary or barcaza_bita_summary %}
-                        {# Ya no mostramos "Resumen de los últimos datos de barcazas." si ya mostramos fecha/usuario o si no hay datos #}
-                        {% if barcaza_ops_summary and (barcaza_ops_summary.datos_planilla or barcaza_ops_summary.datos) %}
-                        <p class="card-text"><i class="bi bi-water"></i> <strong>OPS:</strong> {{ (barcaza_ops_summary.datos_planilla or barcaza_ops_summary.datos)|length }} tanques.</p>
-                        {% endif %}
-                        {% if barcaza_bita_summary %}
-                        <p class="card-text"><i class="bi bi-card-list"></i> <strong>BITA:</strong> Resumen de {{ barcaza_bita_summary|length }} barcazas agrupadas.</p>
-                        {% endif %}
-                         {% if not (barcaza_ops_summary and (barcaza_ops_summary.datos_planilla or barcaza_ops_summary.datos)) and not barcaza_bita_summary and not (barcaza_ops_summary and barcaza_ops_summary.fecha and barcaza_ops_summary.fecha != "N/A") %}
-                            {# Mensaje si no hay ningún tipo de dato de barcaza #}
-                            <p class="card-text">No hay datos de barcazas registrados.</p>
-                        {% endif %}
-                    {% else %}
-                        <p class="card-text">No hay datos de barcazas registrados.</p>
-                    {% endif %}
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-info w-100 text-white"><i class="bi bi-eye-fill"></i> Ver Reporte</a>
+                    <div class="card-header-custom">
+                        <div class="card-icon-wrapper icon-transito">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <h5 class="card-title">Reporte de Tránsito</h5>
+                    </div>
+                    <ul class="list-group list-group-flush flex-grow-1">
+                        <li class="list-group-item">
+                            <span class="item-label">Último Registro:</span>
+                            <span class="item-value">
+                                {% if transito_summary and transito_summary.fecha != 'N/A' %}{{ transito_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Usuario:</span>
+                            <span class="item-value">{{ transito_summary.usuario if transito_summary.usuario else 'N/A' }}</span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">NSV Consolidado:</span>
+                            <span class="item-value"><strong>{{ "%.2f"|format(transito_summary.total_nsv_general|float) }}</strong></span>
+                        </li>
+                    </ul>
+                    <div class="card-footer-custom">
+                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card dashboard-card h-100 shadow-sm">
+        <!-- Tarjeta Barcaza Orion -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card dashboard-card h-100">
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title text-success"><i class="bi bi-truck-front-fill me-2"></i>Reporte de Tránsito</h5>
+                    <div class="card-header-custom">
+                        <div class="card-icon-wrapper icon-orion">
+                            <i class="bi bi-water"></i>
+                        </div>
+                        <h5 class="card-title">Reporte Barcaza Orion</h5>
+                    </div>
+                    <ul class="list-group list-group-flush flex-grow-1">
+                        <li class="list-group-item">
+                            <span class="item-label">Último Registro:</span>
+                            <span class="item-value">
+                                {% if orion_summary and orion_summary.fecha != 'N/A' %}{{ orion_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Usuario:</span>
+                            <span class="item-value">{{ orion_summary.usuario if orion_summary.usuario else 'N/A' }}</span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Total BLS:</span>
+                            <span class="item-value"><strong>{{ "%.2f"|format(orion_summary.total_bls|float) }}</strong></span>
+                        </li>
+                    </ul>
+                    <div class="card-footer-custom">
+                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    {# ---- LÍNEA AÑADIDA/MODIFICADA PARA TRÁNSITO ---- #}
-                    {% if transito_summary and transito_summary.fecha and transito_summary.fecha != "N/A" and transito_summary.usuario and transito_summary.usuario != "N/A" %}
-                        <p class="card-text small text-muted">Último registro del <strong>{{ transito_summary.get('fecha', '').split('_')[0] }}</strong> por {{ transito_summary.usuario }}.</p>
-                    {% elif transito_summary and transito_summary.datos_reporte and transito_summary.datos_reporte|length > 0 %}
-                        {# Si no hay fecha/usuario pero sí otros datos, mostrar el resumen general #}
-                        <p class="card-text small text-muted">Consolidado de productos en tránsito.</p>
-                    {% endif %}
-                    {# ---- FIN LÍNEA AÑADIDA/MODIFICADA ---- #}
-
-                    {% if transito_summary and transito_summary.datos_reporte and transito_summary.datos_reporte|length > 0 %}
-                        {# Ya no mostramos "Consolidado de productos en tránsito." si ya mostramos fecha/usuario o si no hay datos #}
-                        <p class="card-text"><i class="bi bi-box-seam"></i> <strong>{{ transito_summary.datos_reporte|length }}</strong> tipos de producto.</p>
-                        <p class="card-text"><i class="bi bi-fuel-pump-diesel-fill"></i> Total NSV: <strong>{{ transito_summary.total_nsv_general | round(2) }}</strong></p>
-                    {% else %}
-                         {% if not (transito_summary and transito_summary.fecha and transito_summary.fecha != "N/A") %}
-                            {# Mensaje si no hay datos de tránsito ni fecha/usuario #}
-                            <p class="card-text">No hay datos de tránsito consolidados.</p>
-                        {% endif %}
-                    {% endif %}
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-success w-100"><i class="bi bi-eye-fill"></i> Ver Reporte</a>
+        <!-- Tarjeta Barcaza BITA -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card dashboard-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="card-header-custom">
+                        <div class="card-icon-wrapper icon-bita">
+                            <i class="bi bi-tsunami"></i>
+                        </div>
+                        <h5 class="card-title">Reporte Barcaza BITA</h5>
+                    </div>
+                    <ul class="list-group list-group-flush flex-grow-1">
+                        <li class="list-group-item">
+                            <span class="item-label">Último Registro:</span>
+                            <span class="item-value">
+                                {% if bita_summary and bita_summary.fecha != 'N/A' %}{{ bita_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Usuario:</span>
+                            <span class="item-value">{{ bita_summary.usuario if bita_summary.usuario else 'N/A' }}</span>
+                        </li>
+                        <li class="list-group-item">
+                            <span class="item-label">Total BLS:</span>
+                            <span class="item-value"><strong>{{ "%.2f"|format(bita_summary.total_bls|float) }}</strong></span>
+                        </li>
+                    </ul>
+                    <div class="card-footer-custom">
+                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    {# El bloque de Historial de Registros ya fue eliminado en la intención anterior (esto es un comentario, no afecta la visualización) #}
-
 </div>
 
 <style>
-    .page-section-header {
-        background-color: rgba(255, 255, 255, 0.97);
-        padding: 1.25rem 1.5rem;
-        border-radius: 0.375rem;
-    }
-    .page-title-text { color: #343a40; font-weight: 600; }
-    .page-title-icon { color: #0b8552; font-size: 1.2em; margin-right: 0.6rem; }
+    .page-title-text { font-weight: 600; color: #343a40; }
+    .text-primary { color: #0b8552 !important; }
 
-    .dashboard-card {
-        background-color: rgba(255, 255, 255, 0.95);
-        border: none;
-    }
-    .dashboard-card .card-title { font-weight: 600; margin-bottom: 0.75rem; }
-    .dashboard-card .card-text { font-size: 0.9rem; margin-bottom: 0.5rem; }
-    .dashboard-card .btn { font-size: 0.9rem; padding: 0.5rem 1rem; }
+    .dashboard-card { border: 1px solid #e0e5ec; border-radius: 0.75rem; background-color: #ffffff; transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1); }
+    .card-header-custom { display: flex; align-items: center; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #e9ecef; }
+    .card-icon-wrapper { flex-shrink: 0; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; font-size: 1.5rem; color: #fff; margin-right: 1rem; }
+    .icon-planta { background-color: #fd7e14; }
+    .icon-transito { background-color: #0d6efd; }
+    .icon-orion { background-color: #6f42c1; } /* Púrpura para Orion */
+    .icon-bita { background-color: #198754; }  /* Verde para BITA */
+    .card-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 0; }
+    .list-group-flush .list-group-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border: none; }
+    .item-label { color: #6c757d; font-size: 0.9rem; }
+    .item-value { font-weight: 500; color: #343a40; }
+    .card-footer-custom { padding-top: 1.25rem; }
 </style>
 {% endblock %}

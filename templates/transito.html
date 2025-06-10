@@ -1,130 +1,157 @@
 {% extends "base.html" %}
 
-{% block title %}Planilla Tránsito{% endblock %}
-
+{% block title %}Planilla de Tránsito{% endblock %}
 {% block navbar_brand_text %}Planilla Tránsito{% endblock %}
 
 {% block main_style %}
-    /* Estilo para el fondo del área principal (<main>) */
-    background-image: url('{{ url_for('static', filename='logo.jpeg') }}');
-    background-repeat: repeat;
-    background-size: 120px auto;
-    background-color: #e9ecef;
+    /* Fondo limpio y fuente profesional */
+    background-color: #f4f7f9;
+    font-family: 'Poppins', sans-serif;
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-xl my-4">
 
-    <div class="page-section-header shadow-sm">
-        <h1 class="mb-0 h2 page-title-text">
-            <i class="bi bi-truck-front-fill page-title-icon"></i> Planilla 
-            <span id="tipoTransitoVisual">
-                {# Acceso seguro a transito_config y sus claves. El JS usa 'general' para EDSM #}
-                {% if transito_config %}
-                    {{ transito_config.get(tipo_inicial if tipo_inicial == 'refineria' else 'EDSM', {}).get('nombre_display', 'Tránsito Indefinido') }}
-                {% else %}
-                    {{ 'Tránsito Crudo EDSM' if tipo_inicial == 'general' else 'Tránsito Crudo Refinería' }}
-                {% endif %}
-            </span>
-        </h1>
-    </div>
-
-    <div class="action-buttons-bar text-center my-3">
-        <div class="btn-group me-2 mb-2 mb-md-0" role="group">
-            <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success btn-lg px-4">
-                <i class="bi bi-save2-fill"></i> Guardar Registro
-            </button>
-        </div>
-        <div class="btn-group me-2 mb-2 mb-md-0" role="group">
-            <a href="{{ url_for('reporte_transito') }}" class="btn btn-info btn-lg text-white px-4">
-                <i class="bi bi-file-earmark-bar-graph-fill"></i> Ver Reporte
-            </a>
-        </div>
-        <div class="btn-group me-2 mb-2 mb-md-0" role="group">
-             <button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-secondary btn-lg px-4">
-                <i class="bi bi-arrow-repeat"></i> Cambiar a 
-                <span id="toggleNombreVista">
-                    {% set otra_vista_config_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
-                    {% if transito_config %}
-                        {{ transito_config.get(otra_vista_config_key, {}).get('nombre_display', 'Otra Vista') }}
-                    {% else %}
-                        {{ 'Tránsito Crudo Refinería' if tipo_inicial == 'general' else 'Tránsito Crudo EDSM' }}
-                    {% endif %}
+    <div class="page-header-container d-flex justify-content-between align-items-center mb-4">
+        <div class="page-title">
+            <h1 class="page-title-text h2 mb-0">
+                <i class="bi bi-truck-front-fill page-title-icon"></i>
+                <span id="tipoTransitoVisual">
+                    {{ transito_config.get(tipo_inicial if tipo_inicial == 'refineria' else 'EDSM', {}).get('nombre_display', 'Tránsito') }}
                 </span>
-            </button>
+            </h1>
         </div>
-        <div class="btn-group mb-2 mb-md-0" role="group">
-            <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary btn-lg px-4">
-                <i class="bi bi-plus-square-dotted"></i> Añadir Fila
-            </button>
+        <div class="action-buttons-bar">
+            <div class="btn-group" role="group">
+                <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success">
+                    <i class="bi bi-save2-fill me-1"></i> Guardar
+                </button>
+                <a href="{{ url_for('reporte_transito') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
+                </a>
+            </div>
+            <div class="btn-group ms-2" role="group">
+                 <button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-repeat me-1"></i>
+                    <span id="toggleNombreVista">
+                        {% set otra_vista_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
+                        {{ transito_config.get(otra_vista_key, {}).get('nombre_display', 'Otra Vista') }}
+                    </span>
+                </button>
+                <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary" title="Añadir Fila">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
         </div>
     </div>
-    <div id="avisoHoraLimiteContainer"></div>
 
-    <div id="alert-container" style="position: fixed; top: calc(4.5rem + 20px); right: 20px; z-index: 1050; width: auto; max-width: 400px;"></div>
+    <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1100;"></div>
 
-    <div class="table-container shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover table-sm align-middle">
-                <thead class="sticky-top table-header-custom">
-                    <tr>
-                        <th style="min-width: 170px;">FECHA CARGUE</th>
-                        <th style="min-width: 130px;">GUÍA</th>
-                        <th style="min-width: 180px;">ORIGEN</th>
-                        <th style="min-width: 220px;">PRODUCTO</th>
-                        <th style="min-width: 130px;">PLACA</th>
-                        <th style="min-width: 120px;">API @ 60°F</th>
-                        <th style="min-width: 100px;">%BSW</th>
-                        <th style="min-width: 120px;">TOV</th>
-                        <th style="min-width: 120px;">GSV</th>
-                        <th style="min-width: 120px;">NSV</th>
-                        <th style="min-width: 50px;"></th> 
-                    </tr>
-                </thead>
-                <tbody id="tablaTransitoBody">
-                    {# Las filas se generan por JavaScript #}
-                </tbody>
-            </table>
+    <div id="avisoHoraLimiteContainer" class="mb-3"></div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th class="ps-3" style="min-width: 170px;">FECHA CARGUE</th>
+                            <th style="min-width: 130px;">GUÍA</th>
+                            <th style="min-width: 180px;">ORIGEN</th>
+                            <th style="min-width: 220px;">PRODUCTO</th>
+                            <th style="min-width: 130px;">PLACA</th>
+                            <th class="text-center" style="min-width: 120px;">API @60°F</th>
+                            <th class="text-center" style="min-width: 100px;">%BSW</th>
+                            <th class="text-center" style="min-width: 120px;">TOV</th>
+                            <th class="text-center" style="min-width: 120px;">GSV</th>
+                            <th class="text-center" style="min-width: 120px;">NSV</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaTransitoBody">
+                        </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-    /* ... (Tus estilos CSS se mantienen igual que en la pregunta #25) ... */
-    .page-section-header { background-color: rgba(255, 255, 255, 0.97); padding: 1rem 1.5rem; border-radius: 0.375rem; margin-bottom: 0; text-align: center;}
-    .page-title-text { color: #343a40; font-weight: 600; }
-    .page-title-icon { color: #0b8552; font-size: 1.1em; margin-right: 0.5rem; }
-    .action-buttons-bar { padding-top: 1rem; padding-bottom: 1rem; }
-    .action-buttons-bar .btn-lg { padding-left: 1.2rem; padding-right: 1.2rem; font-size: 0.90rem; }
-    .table-container { background-color: rgba(255, 255, 255, 0.95); padding: 1.5rem; border-radius: 0.375rem; margin-top: 1.5rem; }
-    .table-header-custom { background-color: #0b8552 !important; color: white !important; }
-    .table-responsive thead.sticky-top th { position: sticky; top: 0; z-index: 10;}
-    td.cell-input-wrapper { padding: 0.1rem !important; vertical-align: middle; }
-    #tablaTransitoBody select.form-select,
-    #tablaTransitoBody input.form-control,
-    #tablaTransitoBody input.editable-input[type="date"] { font-size: 0.875rem; padding: 0.25rem 0.5rem; background-color: #fef9e7; border: 1px solid #ced4da; border-radius: .2rem; width: 100%; box-sizing: border-box; height: calc(1.5em + .5rem + 2px); }
-    #tablaTransitoBody select.form-select:disabled,
-    #tablaTransitoBody input.form-control:disabled,
-    #tablaTransitoBody input.editable-input[type="date"]:disabled,
-    #tablaTransitoBody input.form-control[readonly] { background-color: #e9ecef !important; color: #6c757d; cursor: default !important; border-color: #ced4da; }
-    .aviso-hora-limite { font-size: 0.9rem; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; }
-    #tablaTransitoBody input.form-control:focus,
-    #tablaTransitoBody input.editable-input[type="date"]:focus,
-    #tablaTransitoBody select.form-select:focus { background-color: #fffde7; border-color: #0b8552; box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.25); }
+    /* Estilo del título principal, como en la página de Planta */
+    .page-title-text {
+        color: #343a40;
+        font-weight: 600;
+    }
+    .page-title-icon {
+        color: #0b8552;
+        font-size: 1.2em;
+        margin-right: 0.75rem;
+        vertical-align: text-bottom;
+    }
+    
+    /* Estilo del encabezado de la tabla, como en Planta */
+    .table-header-custom th {
+        background-color: #0b8552 !important;
+        color: white;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        padding: 0.9rem;
+        vertical-align: middle;
+    }
+    
+    .table tbody td {
+        vertical-align: middle;
+    }
+
+    /* ======================================================= */
+    /* ESTILOS ADAPTADOS PARA TU JAVASCRIPT ORIGINAL */
+    /* ======================================================= */
+    .cell-input-wrapper {
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    /* Estilo unificado para los inputs que tu JS crea */
+    .cell-input-wrapper .form-control,
+    .cell-input-wrapper .form-select {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+        border-color: #e0e5ec;
+        background-color: #fef9e7; /* Fondo amarillo suave por defecto */
+        transition: all 0.2s ease-in-out;
+    }
+    .cell-input-wrapper .form-control:focus,
+    .cell-input-wrapper .form-select:focus {
+        background-color: #fffde7;
+        border-color: #0b8552;
+        box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.15);
+        outline: none;
+    }
+    .cell-input-wrapper .form-control:disabled,
+    .cell-input-wrapper .form-select:disabled {
+        background-color: #e9ecef !important;
+        cursor: not-allowed;
+    }
+    
+    .aviso-hora-limite {
+        padding: 1rem;
+        border-left: 4px solid #ffc107;
+    }
 </style>
 
 <script>
-    // --- INICIO: Configuración y Variables Globales ---
-    const datosGeneralInit = {{ datos_general | default([]) | tojson | safe }};
-    const datosRefineriaInit = {{ datos_refineria | default([]) | tojson | safe }};
-    const transitoConfig = {{ transito_config | default({}) | tojson | safe }}; 
-    console.log("Transito Config Recibido en JS:", JSON.parse(JSON.stringify(transitoConfig)));
+    // Configuración inicial
+    let datosGeneralInit = {{ datos_general | default([]) | tojson | safe }};
+    let datosRefineriaInit = {{ datos_refineria | default([]) | tojson | safe }};
+    const transitoConfig = {{ transito_config | default({}) | tojson | safe }};
     
-    let vistaActual = '{{ tipo_inicial | default("general") }}'; // 'general' o 'refineria'
+    let vistaActual = '{{ tipo_inicial | default("general") }}';
     let currentData = []; 
-    let edicionTransitoPermitida = true; 
-    const HORA_LIMITE_REGISTRO_TRANSITO = 10; 
+    let edicionTransitoPermitida = true;
+    const HORA_LIMITE_REGISTRO_TRANSITO = 10;
 
+    // Elementos del DOM
     const tipoTransitoVisualSpan = document.getElementById("tipoTransitoVisual");
     const toggleNombreVistaSpan = document.getElementById("toggleNombreVista");
     const tablaTransitoBody = document.getElementById("tablaTransitoBody");
@@ -132,6 +159,7 @@
     const btnAnadirFilaTransito = document.getElementById('btnAnadirFilaTransito');
     const avisoHoraLimiteContainer = document.getElementById('avisoHoraLimiteContainer');
 
+    // Funciones principales
     function clonarDatosIniciales(datosOriginales) {
         const MIN_FILAS = 10;
         let datosValidos = Array.isArray(datosOriginales) ? datosOriginales : [];
@@ -139,62 +167,83 @@
             FECHA: "", GUIA: "", ORIGEN: "", PRODUCTO: "", PLACA: "", 
             API: "", BSW: "", TOV: "", GSV: "", NSV: "", ...fila 
         }));
+        
         while (datosClonados.length < MIN_FILAS) {
-            datosClonados.push({"FECHA": "", "GUIA": "", "ORIGEN": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "", "TOV": "", "GSV": "", "NSV": ""});
+            datosClonados.push({
+                FECHA: "", GUIA: "", ORIGEN: "", PRODUCTO: "", 
+                PLACA: "", API: "", BSW: "", TOV: "", GSV: "", NSV: ""
+            });
         }
         return datosClonados;
     }
 
-    function renderTabla() {
-        currentData = vistaActual === "general" ? 
-                        clonarDatosIniciales(datosGeneralInit) : 
-                        clonarDatosIniciales(datosRefineriaInit);
-        tablaTransitoBody.innerHTML = "";
+    function redibujarTabla() {
+    // IMPORTANTE: La línea que reiniciaba 'currentData' ha sido eliminada de aquí.
+        
+    tablaTransitoBody.innerHTML = "";
 
-        currentData.forEach((fila, index) => {
-            const tr = document.createElement("tr");
-            tr.dataset.index = index;
-            crearTdFecha(tr, fila, "FECHA");
-            crearTdInputAlfanumerico(tr, fila, "GUIA");
-            crearTdOrigen(tr, fila, "ORIGEN"); 
-            crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]); 
-            crearTdInputAlfanumerico(tr, fila, "PLACA");
-            ['API', 'BSW', 'TOV', 'GSV', 'NSV'].forEach(campoKey => {
-                crearTdInputNumerico(tr, fila, campoKey);
-            });
-            crearTdBotonEliminar(tr, index);
-            tablaTransitoBody.appendChild(tr);
+    currentData.forEach((fila, index) => {
+        const tr = document.createElement("tr");
+        tr.dataset.index = index;
+        
+        // No tocamos nada de esto, tus funciones para crear celdas se quedan igual
+        crearTdFecha(tr, fila, "FECHA");
+        crearTdInputAlfanumerico(tr, fila, "GUIA");
+        crearTdOrigen(tr, fila, "ORIGEN"); 
+        crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]); 
+        crearTdInputAlfanumerico(tr, fila, "PLACA");
+        
+        ['API', 'BSW', 'TOV', 'GSV', 'NSV'].forEach(campoKey => {
+            crearTdInputNumerico(tr, fila, campoKey);
         });
-        verificarEstadoEdicion();
-    }
+        
+        crearTdBotonEliminar(tr, index);
+        
+        tablaTransitoBody.appendChild(tr);
+    });
+    
+    verificarEstadoEdicion();
+}
 
-    function crearTdGenerico(tr) { /* ... (sin cambios respecto a pregunta #25) ... */ 
+function renderTabla() {
+    currentData = vistaActual === "general" 
+        ? clonarDatosIniciales(datosGeneralInit) 
+        : clonarDatosIniciales(datosRefineriaInit);
+    
+    redibujarTabla(); // Llama a la función segura
+}
+
+    // Funciones auxiliares para crear celdas
+    function crearTdGenerico(tr) {
         const td = document.createElement("td");
         td.classList.add("cell-input-wrapper");
         tr.appendChild(td);
         return td;
     }
-    function crearTdFecha(tr, fila, campoKey) { /* ... (sin cambios respecto a pregunta #25) ... */
+
+    function crearTdFecha(tr, fila, campoKey) {
         const td = crearTdGenerico(tr);
         const input = document.createElement("input");
         input.type = "date"; 
-        input.className = "form-control form-control-sm editable-input"; 
+        input.className = "form-control form-control-sm"; 
+        
         let fechaValor = fila[campoKey] || "";
-        if (fechaValor && fechaValor.includes('/')) { 
+        if (fechaValor && fechaValor.includes('/')) {
             const partes = fechaValor.split('/');
             if (partes.length === 3) {
-                fechaValor = `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`;
-            } else {
-                fechaValor = ""; 
+                fechaValor = `<span class="math-inline">\{partes\[2\]\}\-</span>{partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`;
             }
         }
+        
         input.value = fechaValor;
         input.dataset.field = campoKey;
         input.disabled = !edicionTransitoPermitida;
         input.addEventListener("change", actualizarDatoFila);
+        
         td.appendChild(input);
     }
-    function crearTdInputAlfanumerico(tr, fila, campoKey) { /* ... (sin cambios) ... */
+
+    function crearTdInputAlfanumerico(tr, fila, campoKey) {
         const td = crearTdGenerico(tr);
         const input = document.createElement("input");
         input.type = "text";
@@ -203,9 +252,11 @@
         input.dataset.field = campoKey;
         input.disabled = !edicionTransitoPermitida;
         input.addEventListener("change", actualizarDatoFila);
+        
         td.appendChild(input);
     }
-    function crearTdInputNumerico(tr, fila, campoKey) { /* ... (sin cambios) ... */
+
+    function crearTdInputNumerico(tr, fila, campoKey) {
         const td = crearTdGenerico(tr);
         const input = document.createElement("input");
         input.type = "text"; 
@@ -215,20 +266,30 @@
         input.dataset.field = campoKey;
         input.disabled = !edicionTransitoPermitida;
         input.addEventListener("change", actualizarDatoFila);
+        
         input.addEventListener('keydown', function(event) {
-            if (!edicionTransitoPermitida) { event.preventDefault(); return; }
-            const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", ".", ","];
+            if (!edicionTransitoPermitida) {
+                event.preventDefault(); 
+                return; 
+            }
+            const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", ".", ","];
             if (allowedKeys.includes(event.key)) {
                 if ((event.key === '.' || event.key === ',') && (input.value.includes(',') || input.value.includes('.'))) {
                     event.preventDefault();
-                } return;
+                }
+                return;
             }
-            if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) { return; }
-            if (!(event.key >= '0' && event.key <= '9')) { event.preventDefault(); }
+            if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) {
+                return;
+            }
+            if (!(event.key >= '0' && event.key <= '9')) {
+                event.preventDefault();
+            }
         });
+        
         td.appendChild(input);
     }
-    
+
     function crearTdOrigen(tr, fila, campoKey) {
         const td = crearTdGenerico(tr);
         const select = document.createElement("select");
@@ -236,13 +297,9 @@
         select.dataset.field = campoKey;
         select.disabled = !edicionTransitoPermitida;
 
-        // El JavaScript usa 'general' para EDSM y 'refineria' para REFINERIA
         const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
-        console.log("Creando Origen para vistaActual:", vistaActual, "-> Usando configKey:", tipoConfigKey);
-        
         const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;
         const origenesDisponibles = configParaTipoActual?.campos ? Object.keys(configParaTipoActual.campos).sort() : [];
-        console.log("Origenes disponibles para", tipoConfigKey, ":", origenesDisponibles);
 
         select.innerHTML = '<option value="">Seleccione Origen...</option>';
         origenesDisponibles.forEach(nombreOrigen => {
@@ -251,20 +308,18 @@
             option.textContent = nombreOrigen;
             select.appendChild(option);
         });
+        
         select.value = fila[campoKey] || "";
-
         select.addEventListener("change", function(event) {
             const rowIndex = parseInt(event.target.closest("tr").dataset.index, 10);
             const nuevoOrigen = event.target.value;
             currentData[rowIndex][campoKey] = nuevoOrigen; 
-            console.log("Origen cambiado a:", nuevoOrigen, "en fila:", rowIndex);
 
             const productoSelectElement = event.target.closest("tr").querySelector('select[data-field="PRODUCTO"]');
             if (productoSelectElement) {
                 const origenConfig = configParaTipoActual?.campos?.[nuevoOrigen];
                 const productos = origenConfig?.productos || [];
                 const autoProducto = origenConfig?.auto_select_product || "";
-                console.log("Productos para", nuevoOrigen, ":", productos, "AutoSelect:", autoProducto);
                 
                 productoSelectElement.innerHTML = '<option value="">Seleccione Producto...</option>';
                 productos.forEach(prod => {
@@ -273,16 +328,18 @@
                     opt.textContent = prod;
                     productoSelectElement.appendChild(opt);
                 });
+                
                 productoSelectElement.value = autoProducto; 
                 currentData[rowIndex]["PRODUCTO"] = autoProducto; 
             }
         });
+        
         td.appendChild(select);
     }
     
     function crearTdProducto(tr, fila, campoKey, origenSeleccionado) {
         const td = crearTdGenerico(tr);
-        const select = document.createElement("select"); // 'select' es el elemento correcto
+        const select = document.createElement("select");
         select.className = "form-select form-select-sm";
         select.dataset.field = campoKey;
         select.disabled = !edicionTransitoPermitida;
@@ -295,7 +352,7 @@
             const origenConfig = configParaTipoActual?.campos?.[origenSeleccionado];
 
             if (origenConfig && origenConfig.productos) {
-                select.innerHTML = '<option value="">Seleccione Producto...</option>'; // CORREGIDO
+                select.innerHTML = '<option value="">Seleccione Producto...</option>';
                 origenConfig.productos.forEach(prod => {
                     const option = document.createElement("option");
                     option.value = prod;
@@ -303,192 +360,247 @@
                     select.appendChild(option);
                 });
                 select.value = fila[campoKey] || origenConfig.auto_select_product || "";
-            } else {
-                 console.warn("No se encontró config de productos para origen:", origenSeleccionado, "en tipo:", tipoConfigKey);
             }
-        } else {
-             select.value = fila[campoKey] || "";
         }
         
         select.addEventListener("change", actualizarDatoFila);
         td.appendChild(select);
     }
-    
-    function actualizarDatoFila(event) { /* ... (sin cambios respecto a pregunta #25) ... */
-        const element = event.target;
-        const field = element.dataset.field;
-        const index = parseInt(element.closest("tr").dataset.index, 10);
-        let value = element.value; 
-        if (element.type === "date") { /* No hacer trim a fechas */ }
-        else if (element.getAttribute('inputmode') === 'decimal') { value = value.replace(',', '.'); }
-        else { value = value.trim(); } // Trim para otros campos de texto
-        if (currentData && currentData[index] !== undefined) { currentData[index][field] = value; }
-    }
-    function crearTdBotonEliminar(tr, index) { /* ... (sin cambios respecto a pregunta #25) ... */
+
+    function crearTdBotonEliminar(tr, index) {
         const td = document.createElement("td");
         td.classList.add("text-center");
+        
         const button = document.createElement("button");
-        button.className = "btn btn-danger btn-sm";
+        button.className = "btn btn-outline-danger btn-sm";
         button.innerHTML = '<i class="bi bi-trash"></i>';
         button.type = "button";
         button.disabled = !edicionTransitoPermitida;
+        
         button.onclick = function() {
             if (!edicionTransitoPermitida) return;
+            
             if (currentData.length > 1) { 
                 currentData.splice(index, 1);
-                renderTabla(); 
+                redibujarTabla(); 
             } else {
                 mostrarAlerta("Debe haber al menos una fila.", "warning");
             }
         };
+        
         td.appendChild(button);
         tr.appendChild(td);
     }
-    function agregarFilaTransito() { /* ... (sin cambios respecto a pregunta #25, pero renderTabla ya no es async aquí) ... */
-        if (!edicionTransitoPermitida) {
-            mostrarAlerta("No se pueden añadir filas. Los registros están cerrados.", "warning");
-            return;
+
+    function actualizarDatoFila(event) {
+        const element = event.target;
+        const field = element.dataset.field;
+        const index = parseInt(element.closest("tr").dataset.index, 10);
+        let value = element.value; 
+        
+        if (element.type === "date") {
+            // No hacer trim a fechas
+        } else if (element.getAttribute('inputmode') === 'decimal') {
+            value = value.replace(',', '.'); 
+        } else {
+            value = value.trim(); 
         }
-        const nuevaFilaVacia = {"FECHA": "", "GUIA": "", "ORIGEN": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "", "TOV": "", "GSV": "", "NSV": ""};
-        currentData.push(nuevaFilaVacia);
-        renderTabla(); // Llama a la renderTabla síncrona
+        
+        if (currentData && currentData[index] !== undefined) {
+            currentData[index][field] = value;
+        }
     }
 
-    function actualizarTextosDeVista() { // Para actualizar títulos y botones
+    function agregarFilaTransito() {
+    if (!edicionTransitoPermitida) {
+        mostrarAlerta("No se pueden añadir filas. Los registros están cerrados.", "warning");
+        return;
+    }
+    
+    const nuevaFilaVacia = {
+        FECHA: "", GUIA: "", ORIGEN: "", PRODUCTO: "", 
+        PLACA: "", API: "", BSW: "", TOV: "", GSV: "", NSV: ""
+    };
+    
+    // 1. Modifica la lista de datos en memoria
+    currentData.push(nuevaFilaVacia);
+    
+    // 2. Llama a la función SEGURA que solo redibuja la tabla sin borrar datos
+    redibujarTabla();
+}
+
+    function actualizarTextosDeVista() {
         const tipoConfigActualKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
         const tipoConfigOtraKey = vistaActual === "general" ? "REFINERIA" : "EDSM";
-
         const configActual = transitoConfig ? transitoConfig[tipoConfigActualKey] : null;
         const configOtra = transitoConfig ? transitoConfig[tipoConfigOtraKey] : null;
 
         if (tipoTransitoVisualSpan) {
-            tipoTransitoVisualSpan.textContent = configActual ? configActual.nombre_display : (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");
+            tipoTransitoVisualSpan.textContent = configActual 
+                ? configActual.nombre_display 
+                : (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");
         }
+        
         if (toggleNombreVistaSpan) {
-            toggleNombreVistaSpan.textContent = configOtra ? configOtra.nombre_display : (vistaActual === "general" ? "Tránsito Crudo Refinería" : "Tránsito Crudo EDSM");
+            toggleNombreVistaSpan.textContent = configOtra 
+                ? configOtra.nombre_display 
+                : (vistaActual === "general" ? "Refinería" : "EDSM");
         }
     }
 
-    function cambiarVista() { // Ya no necesita ser async si renderTabla es síncrono
+    function cambiarVista() {
         vistaActual = vistaActual === "general" ? "refineria" : "general";
         actualizarTextosDeVista();
         renderTabla(); 
     }
 
-    function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) { /* ... (sin cambios) ... */
+    function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
         const alertContainer = document.getElementById('alert-container');
-        if (!alertContainer) { console.error("Contenedor de alertas no encontrado."); return; }
+        if (!alertContainer) return;
+        
         const wrapper = document.createElement('div');
-        let iconClass = 'bi-info-circle-fill';
-        if (tipo === 'success') iconClass = 'bi-check-circle-fill';
-        if (tipo === 'danger') iconClass = 'bi-exclamation-triangle-fill';
-        if (tipo === 'warning') iconClass = 'bi-exclamation-diamond-fill';
-        wrapper.innerHTML = `<div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center" role="alert"><i class="bi ${iconClass} me-2"></i><div>${mensaje}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+        const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : tipo === 'warning' ? 'bi-exclamation-diamond-fill' : 'bi-info-circle-fill';
+        
+        wrapper.innerHTML = `
+            <div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center shadow" role="alert">
+                <i class="bi ${iconClass} me-2"></i>
+                <div>${mensaje}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`;
+        
         alertContainer.appendChild(wrapper);
         const alertElement = wrapper.firstChild;
-        if (alertElement) { 
-            const alertInstance = new bootstrap.Alert(alertElement); 
-            setTimeout(() => { 
-                if (alertInstance && alertElement.parentElement) { 
-                     try { alertInstance.close(); } catch(e) { /* ignore if already removed */ }
-                } else if (wrapper.parentElement) { 
-                    wrapper.remove();
+        
+        if (alertElement) {
+             setTimeout(() => {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+                if (bsAlert) {
+                    bsAlert.close();
                 }
-            }, duracion); 
+             }, duracion);
         }
     }
-    function guardarRegistro() { /* ... (tu función guardarRegistro de la pregunta #25 se mantiene, solo asegúrate que la URL del fetch sea correcta) ... */
+
+    function guardarRegistro() {
+         // ▼▼▼ CHEQUEO DE HORA DESACTIVADO ▼▼▼
+        /*
         if (!edicionTransitoPermitida) {
-            mostrarAlerta("❌ Los registros están cerrados después de las " + HORA_LIMITE_REGISTRO_TRANSITO + ":00 AM.", "warning");
+            mostrarAlerta(`Los registros están cerrados después de las ${HORA_LIMITE_REGISTRO_TRANSITO}:00 AM.`, "warning");
             return;
         }
-        const datosAEnviar = currentData
-            .map(fila => { 
-                let filaProcesada = {...fila};
-                // Si el backend espera FECHA como DD/MM/YYYY, convertir aquí.
-                // Si el backend espera YYYY-MM-DD (como lo hace input type=date), no es necesaria conversión.
-                if (filaProcesada.FECHA && filaProcesada.FECHA.includes('-')) { // Asume YYYY-MM-DD
-                    // const partes = filaProcesada.FECHA.split('-'); 
-                    // if (partes.length === 3) {
-                    //     filaProcesada.FECHA = `${partes[2]}/${partes[1]}/${partes[0]}`; // Convertir a DD/MM/YYYY
-                    // }
-                }
-                ['API', 'BSW', 'TOV', 'GSV', 'NSV'].forEach(key => {
-                    if (filaProcesada[key] && typeof filaProcesada[key] === 'string') {
-                        filaProcesada[key] = filaProcesada[key].replace(',', '.');
+      */
+        
+        // ▼▼▼ LA LÓGICA DE GUARDADO AHORA ESTÁ ACTIVA ▼▼▼
+    const btn = document.getElementById('btnGuardarTransito');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
+
+        const datosAEnviar = [];
+        const filas = tablaTransitoBody.querySelectorAll('tr');
+
+        filas.forEach(fila => {
+            const rowData = {};
+            const inputs = fila.querySelectorAll('input, select');
+            let filaTieneDatos = false;
+
+            inputs.forEach(input => {
+                const field = input.dataset.field;
+                if (field) {
+                    let value = input.value.trim();
+                    if (value) {
+                        filaTieneDatos = true;
                     }
-                });
-                return filaProcesada;
-            })
-            .filter(fila => 
-            Object.values(fila).some(valor => valor !== null && String(valor).trim() !== "")
-        );
+                    // Siempre reemplazar coma por punto para campos numéricos antes de enviar
+                    if (input.getAttribute('inputmode') === 'decimal') {
+                        value = value.replace(',', '.');
+                    }
+                    rowData[field] = value;
+                }
+            });
+
+            // Solo añadir una fila si contiene al menos un dato
+            if (filaTieneDatos) {
+                datosAEnviar.push(rowData);
+            }
+        });
 
         if (datosAEnviar.length === 0) {
-            mostrarAlerta("⚠️ No hay datos para guardar. Todas las filas están vacías.", "warning");
+            mostrarAlerta("No hay datos para guardar. Todas las filas están vacías.", "warning");
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
             return;
         }
-        for (const fila of datosAEnviar) {
-            if (fila.ORIGEN && !fila.PRODUCTO) {
-                mostrarAlerta(`❌ Error: La fila con Guía '${fila.GUIA || '(vacía)'}' tiene un Origen seleccionado pero no un Producto.`, "danger", 6000);
-                return;
-            }
-        }
-        console.log("Enviando a /guardar-registro-transito-" + vistaActual + ":", JSON.stringify(datosAEnviar, null, 2)); // DEBUG
-        mostrarAlerta("Guardando registro, por favor espera...", "info", 6000);
+
         fetch(`/guardar-registro-transito-${vistaActual}`, { 
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(datosAEnviar)
         })
-        .then(res => { 
-            if (res.status === 401) { return res.json().then(errData => { let err = new Error(errData.message || "Sesión expirada."); err.isAuthenticationError = true; throw err; }); }
-            if (res.status === 403) { return res.json().then(errData => { throw new Error(errData.message || "Acción no permitida.");});} 
-            if (!res.ok) { return res.json().catch(() => { throw new Error(`Error del servidor: ${res.status} ${res.statusText}. Respuesta no fue JSON.`); }).then(parsedError => { throw new Error(parsedError.message || `Error ${res.status} del servidor.`); });}
+        .then(res => {
+            if (!res.ok) return res.json().then(errData => { throw new Error(errData.message || 'Error del servidor'); });
             return res.json();
         })
         .then(data => {
             if (data.success) { 
-                mostrarAlerta("✅ Registro guardado exitosamente!", "success"); 
+                mostrarAlerta("Registro guardado exitosamente!", "success");
+                // Actualiza la "memoria" interna con los datos que se acaban de guardar
+                if (vistaActual === 'general') {
+                    datosGeneralInit = JSON.parse(JSON.stringify(datosAEnviar));
+                } else {
+                    datosRefineriaInit = JSON.parse(JSON.stringify(datosAEnviar));
+                }
             } else { 
-                mostrarAlerta("❌ Error al guardar: " + (data.message || "El servidor indicó un fallo."), "danger");
+                throw new Error(data.message || "El servidor indicó un fallo.");
             }
         })
         .catch(error => {
-            console.error("Error en fetch /guardar-registro-transito-:", error);
-            if (error.isAuthenticationError) { 
-                mostrarAlerta("⚠️ " + error.message + " Redirigiendo al login...", "warning", 5000); 
-                setTimeout(() => { window.location.href = "{{ url_for('login') }}?next=" + encodeURIComponent(window.location.pathname + window.location.search); }, 3000);
-            } else { 
-                mostrarAlerta("❌ Error: " + error.message, "danger", 8000); 
-            }
+            console.error("Error al guardar:", error);
+            mostrarAlerta(`Error: ${error.message}`, "danger", 8000); 
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
         });
     }
-    function verificarEstadoEdicion() { /* ... (sin cambios respecto a pregunta #25) ... */
+
+    function verificarEstadoEdicion() {
+         // ▼▼▼ BLOQUE DE RESTRICCIÓN VISUAL DESACTIVADO CORRECTAMENTE ▼▼▼
+        /*
         const ahora = new Date();
         const horaActual = ahora.getHours();
         const avisoExistente = document.getElementById('aviso-hora-limite-transito');
+        
         if (horaActual >= HORA_LIMITE_REGISTRO_TRANSITO) {
             edicionTransitoPermitida = false;
             if (btnGuardarTransito) { btnGuardarTransito.disabled = true; btnGuardarTransito.classList.remove('btn-success'); btnGuardarTransito.classList.add('btn-secondary'); }
-            if (btnAnadirFilaTransito) btnAnadirFilaTransito.disabled = true;
-            tablaTransitoBody.querySelectorAll('input, select').forEach(el => el.disabled = true);
+            if (btnAnadirFilaTransito) { btnAnadirFilaTransito.disabled = true; }
+            tablaTransitoBody.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
             if (!avisoExistente && avisoHoraLimiteContainer) { 
-                avisoHoraLimiteContainer.innerHTML = `<div class="alert alert-warning text-center aviso-hora-limite mt-3" id="aviso-hora-limite-transito" role="alert"><i class="bi bi-clock-fill me-2"></i>Los registros para Tránsito hoy se aceptan únicamente antes de las ${HORA_LIMITE_REGISTRO_TRANSITO}:00 AM. La planilla está bloqueada.</div>`;
+                avisoHoraLimiteContainer.innerHTML = `
+                    <div class="alert alert-warning aviso-hora-limite" id="aviso-hora-limite-transito" role="alert">
+                        <i class="bi bi-clock-fill me-2"></i>
+                        Los registros para hoy se aceptan únicamente antes de las ${HORA_LIMITE_REGISTRO_TRANSITO}:00 AM.
+                    </div>
+                `;
             }
         } else {
             edicionTransitoPermitida = true;
-             if (btnGuardarTransito) { btnGuardarTransito.disabled = false; btnGuardarTransito.classList.add('btn-success'); btnGuardarTransito.classList.remove('btn-secondary');}
-            if (btnAnadirFilaTransito) btnAnadirFilaTransito.disabled = false;
-            tablaTransitoBody.querySelectorAll('input, select').forEach(el => el.disabled = false);
-            if (avisoExistente) avisoExistente.remove();
+            if (btnGuardarTransito) { btnGuardarTransito.disabled = false; btnGuardarTransito.classList.add('btn-success'); btnGuardarTransito.classList.remove('btn-secondary'); }
+            if (btnAnadirFilaTransito) { btnAnadirFilaTransito.disabled = false; }
+            tablaTransitoBody.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+            if (avisoExistente) {
+                avisoExistente.remove();
+            }
         }
+          */
+        // ▲▲▲ FIN DEL BLOQUE DESACTIVADO ▲▲▲
     }
 
+    // Inicialización
     document.addEventListener("DOMContentLoaded", () => {
         renderTabla(); 
         verificarEstadoEdicion(); 
-        actualizarTextosDeVista(); // Llamar para establecer títulos iniciales
+        actualizarTextosDeVista();
     });
 </script>
 {% endblock %}
