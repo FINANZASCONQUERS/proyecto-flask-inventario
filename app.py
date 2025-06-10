@@ -698,7 +698,11 @@ def guia_transporte():
 @app.route('/reporte_barcaza')
 @login_required
 def reporte_barcaza():
-    print("\n--- Iniciando /reporte_barcaza ---")
+    # Solo usuarios autorizados pueden ver este reporte
+    if session.get('rol') not in ['admin', 'manager'] and session.get('area') != 'barcaza':
+        flash("No tiene permisos para ver este reporte.", "danger")
+        return redirect(url_for('home'))
+
     carpeta = "registros"
     fecha_actualizacion_info = "No hay registros de Barcaza Orion guardados."
     datos_barcaza_reporte = []
@@ -707,47 +711,55 @@ def reporte_barcaza():
         os.makedirs(carpeta, exist_ok=True)
         archivos_orion = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_orion_") and a.endswith(".json")], reverse=True)
 
-        print(f"1. Archivos encontrados: {archivos_orion}")
-
         if archivos_orion:
             ruta_reciente = os.path.join(carpeta, archivos_orion[0])
-            print(f"2. Leyendo el archivo más reciente: {ruta_reciente}")
-            
             with open(ruta_reciente, 'r', encoding='utf-8') as f:
                 contenido = json.load(f)
             
             datos_barcaza_reporte = contenido.get("datos", [])
             
-            if not datos_barcaza_reporte:
-                print("3. ¡ALERTA! El archivo JSON fue encontrado, pero la lista 'datos' está vacía.")
-                flash("El último registro guardado no contenía datos de tanques.", "warning")
-            else:
-                print(f"3. Datos cargados del JSON. Número de tanques: {len(datos_barcaza_reporte)}")
-
             fecha_guardado = contenido.get("fecha")
             usuario_guardado = contenido.get("usuario")
-            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado, tipo_fecha="underscore")
+            # Asumiendo que tienes la función formatear_info_actualizacion
+            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado)
 
     except Exception as e:
-        print(f"¡ERROR! Ocurrió una excepción: {e}")
         flash(f"Error al generar el reporte de barcaza: {e}", "danger")
         fecha_actualizacion_info = "Error al cargar la información."
 
+    # --- INICIO DE LA LÓGICA DE AGRUPACIÓN CORRECTA ---
+    
     barcazas_agrupadas = {}
+    
+    # Un diccionario para mapear la clave del grupo al nombre que quieres mostrar en el reporte
+    nombres_display = {
+        "PRINCIPAL": "Tanque Principal (TK-101)",
+        "MANZANILLO": "Barcaza Manzanillo (MGO)",
+        "CR": "Barcaza CR",
+        "MARGOTH": "Barcaza Margoth",
+        "ODISEA": "Barcaza Odisea"
+    }
+
     if datos_barcaza_reporte:
         for tanque in datos_barcaza_reporte:
-            nombre_base = tanque['TK'].split(' ')[0]
-            if "MAN" in nombre_base: nombre_barcaza = "Barcaza Manzanillo (MGO)"
-            elif "CR" in nombre_base: nombre_barcaza = "Barcaza CR"
-            elif "MARG" in nombre_base: nombre_barcaza = "Barcaza Margoth"
-            elif "ODI" in nombre_base: nombre_barcaza = "Barcaza Odisea"
-            elif "TK-101" in nombre_base: nombre_barcaza = "Tanque Principal (TK-101)"
-            else: nombre_barcaza = "Otros Tanques"
-            if nombre_barcaza not in barcazas_agrupadas: barcazas_agrupadas[nombre_barcaza] = []
-            barcazas_agrupadas[nombre_barcaza].append(tanque)
+            # Obtenemos el grupo directamente de la clave 'grupo' del tanque
+            grupo_key = tanque.get("grupo")
+            
+            # Verificamos si el grupo del tanque está en nuestro diccionario de nombres
+            if grupo_key in nombres_display:
+                nombre_barcaza = nombres_display[grupo_key]
+                
+                # Agrupamos el tanque bajo su nombre completo
+                if nombre_barcaza not in barcazas_agrupadas:
+                    barcazas_agrupadas[nombre_barcaza] = []
+                barcazas_agrupadas[nombre_barcaza].append(tanque)
+            else:
+                # Si un tanque no tiene un grupo conocido, lo ponemos en "Otros"
+                if "Otros Tanques" not in barcazas_agrupadas:
+                    barcazas_agrupadas["Otros Tanques"] = []
+                barcazas_agrupadas["Otros Tanques"].append(tanque)
 
-    print(f"4. Datos agrupados finales: {barcazas_agrupadas.keys()}")
-    print("--- Fin de /reporte_barcaza ---\n")
+    # --- FIN DE LA LÓGICA DE AGRUPACIÓN CORRECTA ---
     
     return render_template("reporte_barcaza_orion.html",
                            barcazas_agrupadas=barcazas_agrupadas,
