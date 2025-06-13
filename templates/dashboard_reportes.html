@@ -1,174 +1,346 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard de Reportes{% endblock %}
+{% block title %}Sistema de Gestión de Inventario{% endblock %}
 {% block navbar_brand_text %}Dashboard{% endblock %}
 
 {% block main_style %}
-    background-color: #f4f7f9;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     font-family: 'Poppins', sans-serif;
 {% endblock %}
 
 {% block content %}
-<div class="container-xl my-4">
-
-    <div class="mb-4">
-        <h1 class="h2 page-title-text mb-0">
-            <i class="bi bi-grid-1x2-fill me-2 text-primary"></i> Dashboard General de Reportes
-        </h1>
-        <p class="text-muted">Resumen de los últimos registros guardados en el sistema.</p>
+<div class="container-xxl my-4">
+    <!-- Header Section -->
+    <div class="dashboard-header mb-5">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+            <div>
+                <h1 class="display-6 fw-semibold mb-2 text-gray-800">
+                    <i class="bi bi-speedometer2 me-2 text-primary-gradient"></i> SISTEMA DE GESTION DE INVENTARIOS
+                </h1>
+                <p class="lead text-muted mb-0">Resumen operacional en tiempo real</p>
+            </div>
+            <div class="mt-3 mt-md-0">
+                <span class="badge bg-light text-dark border border-2 border-primary">
+                    <i class="bi bi-calendar-check me-1"></i> 
+                    <span id="current-date">{{ current_date }}</span>
+                </span>
+            </div>
+        </div>
+        <hr class="dashboard-divider">
     </div>
 
-    <div class="row g-4">
-        <!-- Tarjeta Planta -->
-        <div class="col-lg-3 col-md-6">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="card-header-custom">
-                        <div class="card-icon-wrapper icon-planta">
-                            <i class="bi bi-buildings-fill"></i>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="stat-icon bg-planta-soft">
+                            <i class="bi bi-buildings-fill text-planta"></i>
                         </div>
-                        <h5 class="card-title">Reporte de Planta</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('reporte_planta') }}">Ver detalle</a></li>
+                                <li><a class="dropdown-item" href="#">Exportar</a></li>
+                            </ul>
+                        </div>
                     </div>
-                    <ul class="list-group list-group-flush flex-grow-1">
-                        <li class="list-group-item">
-                            <span class="item-label">Último Registro:</span>
-                            <span class="item-value">
-                                {% if planta_summary and planta_summary.fecha != 'N/A' %}{{ planta_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Usuario:</span>
-                            <span class="item-value">{{ planta_summary.usuario if planta_summary.usuario else 'N/A' }}</span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Tanques Registrados:</span>
-                            <span class="item-value"><strong>{{ (planta_summary.datos or [])|length }}</strong></span>
-                        </li>
-                    </ul>
-                    <div class="card-footer-custom">
-                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
+                    <h3 class="mb-1">{{ (planta_summary.datos or [])|length }}</h3>
+                    <p class="text-muted mb-2">Tanques registrados</p>
+                    <div class="progress thin-progress">
+                        <div class="progress-bar bg-planta" role="progressbar" style="width: {{ planta_summary.completion_rate }}%"></div>
                     </div>
+                    <div class="mt-3 text-center">
+   <small class="text-muted">
+       <i class="bi bi-info-circle me-1"></i>
+                        {{ planta_summary.info_completa | default('Sin Registros') }}</small>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 pt-0">
+                    <a href="{{ url_for('reporte_planta') }}" class="btn btn-sm btn-planta stretched-link">
+                        Ver reporte completo <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Tarjeta Tránsito -->
-        <div class="col-lg-3 col-md-6">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="card-header-custom">
-                        <div class="card-icon-wrapper icon-transito">
-                            <i class="bi bi-truck"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="stat-icon bg-transito-soft">
+                            <i class="bi bi-truck text-transito"></i>
                         </div>
-                        <h5 class="card-title">Reporte de Tránsito</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('reporte_transito') }}">Ver detalle</a></li>
+                                <li><a class="dropdown-item" href="#">Exportar</a></li>
+                            </ul>
+                        </div>
                     </div>
-                    <ul class="list-group list-group-flush flex-grow-1">
-                        <li class="list-group-item">
-                            <span class="item-label">Último Registro:</span>
-                            <span class="item-value">
-                                {% if transito_summary and transito_summary.fecha != 'N/A' %}{{ transito_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Usuario:</span>
-                            <span class="item-value">{{ transito_summary.usuario if transito_summary.usuario else 'N/A' }}</span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">NSV Consolidado:</span>
-                            <span class="item-value"><strong>{{ "%.2f"|format(transito_summary.total_nsv_general|float) }}</strong></span>
-                        </li>
-                    </ul>
-                    <div class="card-footer-custom">
-                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
+                    <h3 class="mb-1">{{ (transito_summary.datos or [])|length }}</h3>
+                    <p class="text-muted mb-2">Registros en tránsito</p>
+                    <div class="progress thin-progress">
+                        <div class="progress-bar bg-transito" role="progressbar" style="width: {{ transito_summary.completion_rate }}%"></div>
                     </div>
+                    <div class="mt-3 text-center">
+   <small class="text-muted">
+       <i class="bi bi-info-circle me-1"></i>
+                    {{ transito_summary.info_completa | default('Sin Registros') }}</small>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 pt-0">
+                    <a href="{{ url_for('reporte_transito') }}" class="btn btn-sm btn-transito stretched-link">
+                        Ver reporte completo <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Tarjeta Barcaza Orion -->
-        <div class="col-lg-3 col-md-6">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="card-header-custom">
-                        <div class="card-icon-wrapper icon-orion">
-                            <i class="bi bi-water"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="stat-icon bg-orion-soft">
+                            <i class="bi bi-water text-orion"></i>
                         </div>
-                        <h5 class="card-title">Reporte Barcaza Orion</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('reporte_barcaza') }}">Ver detalle</a></li>
+                                <li><a class="dropdown-item" href="#">Exportar</a></li>
+                            </ul>
+                        </div>
                     </div>
-                    <ul class="list-group list-group-flush flex-grow-1">
-                        <li class="list-group-item">
-                            <span class="item-label">Último Registro:</span>
-                            <span class="item-value">
-                                {% if orion_summary and orion_summary.fecha != 'N/A' %}{{ orion_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Usuario:</span>
-                            <span class="item-value">{{ orion_summary.usuario if orion_summary.usuario else 'N/A' }}</span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Total BLS:</span>
-                            <span class="item-value"><strong>{{ "%.2f"|format(orion_summary.total_bls|float) }}</strong></span>
-                        </li>
-                    </ul>
-                    <div class="card-footer-custom">
-                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
+                    {% set total_bls_orion = (orion_summary.datos or [])|map(attribute='BLS_60')|map('float')|sum %}
+                    <h3 class="mb-1">{{ "%.2f"|format(total_bls_orion) }} <small class="text-muted fs-6">BLS</small></h3>
+                    <p class="text-muted mb-2">Barcaza Orion</p>
+                    <div class="progress thin-progress">
+                        <div class="progress-bar bg-orion" role="progressbar" style="width: {{ orion_summary.completion_rate }}%"></div>
                     </div>
+                    <div class="mt-3 text-center">
+                       <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                            {{ orion_summary.info_completa | default('Sin Registros') }}
+                              </small>
+                </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 pt-0">
+                    <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-sm btn-orion stretched-link">
+                        Ver reporte completo <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Tarjeta Barcaza BITA -->
-        <div class="col-lg-3 col-md-6">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="card-header-custom">
-                        <div class="card-icon-wrapper icon-bita">
-                            <i class="bi bi-tsunami"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="stat-icon bg-bita-soft">
+                            <i class="bi bi-tsunami text-bita"></i>
                         </div>
-                        <h5 class="card-title">Reporte Barcaza BITA</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('reporte_barcaza_bita') }}">Ver detalle</a></li>
+                                <li><a class="dropdown-item" href="#">Exportar</a></li>
+                            </ul>
+                        </div>
                     </div>
-                    <ul class="list-group list-group-flush flex-grow-1">
-                        <li class="list-group-item">
-                            <span class="item-label">Último Registro:</span>
-                            <span class="item-value">
-                                {% if bita_summary and bita_summary.fecha != 'N/A' %}{{ bita_summary.get('fecha', '').split('_')[0] }}{% else %}Sin Datos{% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Usuario:</span>
-                            <span class="item-value">{{ bita_summary.usuario if bita_summary.usuario else 'N/A' }}</span>
-                        </li>
-                        <li class="list-group-item">
-                            <span class="item-label">Total BLS:</span>
-                            <span class="item-value"><strong>{{ "%.2f"|format(bita_summary.total_bls|float) }}</strong></span>
-                        </li>
-                    </ul>
-                    <div class="card-footer-custom">
-                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-primary w-100"><i class="bi bi-eye-fill me-2"></i>Ver Reporte</a>
+                    {% set total_bls_bita = (bita_summary.datos or [])|map(attribute='BLS_60')|map('float')|sum %}
+                    <h3 class="mb-1">{{ "%.2f"|format(total_bls_bita) }} <small class="text-muted fs-6">BLS</small></h3>
+                    <p class="text-muted mb-2">Barcaza BITA</p>
+                    <div class="progress thin-progress">
+                        <div class="progress-bar bg-bita" role="progressbar" style="width: {{ bita_summary.completion_rate }}%"></div>
                     </div>
+                    <div class="mt-3 text-center">
+   <small class="text-muted">
+       <i class="bi bi-info-circle me-1"></i>
+                        
+    {{ bita_summary.info_completa | default('Sin Registros') }}</small>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 pt-0">
+                    <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-sm btn-bita stretched-link">
+                        Ver reporte completo <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
 <style>
-    .page-title-text { font-weight: 600; color: #343a40; }
-    .text-primary { color: #0b8552 !important; }
-
-    .dashboard-card { border: 1px solid #e0e5ec; border-radius: 0.75rem; background-color: #ffffff; transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
-    .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1); }
-    .card-header-custom { display: flex; align-items: center; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #e9ecef; }
-    .card-icon-wrapper { flex-shrink: 0; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; font-size: 1.5rem; color: #fff; margin-right: 1rem; }
-    .icon-planta { background-color: #fd7e14; }
-    .icon-transito { background-color: #0d6efd; }
-    .icon-orion { background-color: #6f42c1; } /* Púrpura para Orion */
-    .icon-bita { background-color: #198754; }  /* Verde para BITA */
-    .card-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 0; }
-    .list-group-flush .list-group-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border: none; }
-    .item-label { color: #6c757d; font-size: 0.9rem; }
-    .item-value { font-weight: 500; color: #343a40; }
-    .card-footer-custom { padding-top: 1.25rem; }
+    /* Color System */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0b8552 0%, #0a6e45 100%);
+        --planta: #fd7e14;
+        --planta-soft: rgba(253, 126, 20, 0.1);
+        --transito: #0d6efd;
+        --transito-soft: rgba(13, 110, 253, 0.1);
+        --orion: #6f42c1;
+        --orion-soft: rgba(111, 66, 193, 0.1);
+        --bita: #198754;
+        --bita-soft: rgba(25, 135, 84, 0.1);
+    }
+    
+    /* Text Gradient */
+    .text-primary-gradient {
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    /* Header */
+    .dashboard-header {
+        padding-top: 1rem;
+    }
+    
+    .dashboard-divider {
+        border-top: 2px solid rgba(11, 133, 82, 0.2);
+        margin: 1.5rem 0;
+        opacity: 1;
+    }
+    
+    /* Stat Cards */
+    .stat-card {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    .thin-progress {
+        height: 6px;
+        border-radius: 3px;
+    }
+    
+    /* Buttons */
+    .btn-planta {
+        background-color: var(--planta);
+        color: white;
+    }
+    
+    .btn-transito {
+        background-color: var(--transito);
+        color: white;
+    }
+    
+    .btn-orion {
+        background-color: var(--orion);
+        color: white;
+    }
+    
+    .btn-bita {
+        background-color: var(--bita);
+        color: white;
+    }
+    
+    /* Table */
+    .table-hover tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(11, 133, 82, 0.05);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .stat-card {
+            margin-bottom: 1.5rem;
+        }
+    }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Current date formatting
+    document.addEventListener('DOMContentLoaded', function() {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateElement = document.getElementById('current-date');
+        if (dateElement) {
+            const currentDate = new Date();
+            dateElement.textContent = currentDate.toLocaleDateString('es-ES', options);
+        }
+        
+        // Monthly Chart
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        const monthlyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                datasets: [{
+                    label: 'Planta',
+                    data: [12, 19, 15, 8],
+                    backgroundColor: 'rgba(253, 126, 20, 0.7)',
+                    borderRadius: 6
+                }, {
+                    label: 'Tránsito',
+                    data: [8, 12, 6, 14],
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderRadius: 6
+                }, {
+                    label: 'Barcazas (BLS)',
+                    data: [1200, 1900, 1500, 2200],
+                    backgroundColor: 'rgba(111, 66, 193, 0.7)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label.includes('Barcazas')) {
+                                    return label + ': ' + context.raw.toLocaleString() + ' BLS';
+                                }
+                                return label + ': ' + context.raw;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

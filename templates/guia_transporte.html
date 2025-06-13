@@ -78,6 +78,9 @@
         
         /* Estilos de Impresión */
         @media print {
+           .no-print { 
+        display: none !important; 
+    }
             #acciones, #boton-logout { display: none !important; }
             body::before { display: none; }
             .campo, .hoja { border: none !important; }
@@ -90,7 +93,7 @@
              body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
             #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         }
-        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 1.5cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 1.9cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
         .fila { display: flex; margin-bottom: 0.4cm; }
         .fila.pequeno { margin-bottom: 0.3cm; }
@@ -102,16 +105,20 @@
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none; }
         select::-ms-expand { display: none; }
         .campo input, .campo select, .campo textarea { width: 100%; border: none; background: transparent; font: inherit; text-transform: uppercase; outline: none; resize: none; text-align: center; font-weight: bold; padding: 0; }
+          #direccionCliente {
+            line-height: 0.45cm; /* Establece la altura de cada renglón */
+            overflow-y: hidden;  /* Oculta el scroll si el texto es muy largo */
+        }
         .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
         .descripcion-producto, .volumen { font-weight: bold; }
         .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
-        .lugar-fecha { width: 9cm; height: 1.1cm; font-size: 14pt }
+        .lugar-fecha { width: 8.8cm; height: 1.1cm; font-size: 14pt }
         .planta-productor { width: 9cm; height: 1cm;font-size: 14pt }
         .factura-remision { width: 3.5cm; height: 1cm;font-size: 16pt  }
         .despacho { width: 15cm; height: 1cm; font-size: 14pt }
         .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
-        .direccion { width: 15cm; height: 1cm; font-size: 14pt }
-        .ciudad { width: 11.7cm; height: 1cm; font-size: 12pt }
+        .direccion { width: 15cm; height: 1.2cm; font-size: 14pt }
+        .ciudad { width: 11cm; height: 1cm; font-size: 12pt }
         .nombre-conductor { width: 18cm; height: 1cm; font-size: 14pt }
         .cedula { width: 9cm; height: 1cm; font-size: 14pt }
         .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
@@ -135,15 +142,17 @@
     </style>
 </head>
 <body>
-
-<a id="boton-logout" href="{{ url_for('logout') }}">
-    <i class="bi bi-box-arrow-right"></i>
-    Cerrar Sesión
-</a> 
-
-<div id="acciones">
-    </div>
-
+<div class="acciones no-print">
+    <button onclick="window.history.back()" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Regresar
+    </button>
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class="bi bi-printer"></i> Imprimir Guía
+    </button>
+    <a id="boton-logout" href="{{ url_for('logout') }}" class="btn btn-danger">
+        <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+    </a>
+</div>
 <div id="contenedor-guia">
   <div class="hoja">
     <div class="fila">
@@ -160,7 +169,7 @@
       <div class="campo codigo-sicom sin-borde"><input placeholder="CÓDIGO SICOM"></div>
     </div>
     <div class="fila">
-      <div class="campo direccion sin-borde"><input id="direccionCliente" placeholder="DIRECCIÓN"></div>
+      <div class="campo direccion sin-borde"><textarea id="direccionCliente" placeholder="DIRECCIÓN"></textarea></div>
       <div class="campo ciudad sin-borde"><input id="ciudadCliente" placeholder="CIUDAD"></div>
     </div>
     <div class="fila pequeno">
@@ -181,7 +190,7 @@
     <div class="fila">
       <div class="campo lugar-origen sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
       <div class="campo fecha-hora-salida sin-borde"><input id="fechaHoraSalida" readonly></div>
-      <div class="campo hora sin-borde"><input id="horaSalida" readonly></div>
+      <div class="campo hora sin-borde"><input id="horaSalida"></div>
     </div>
     <div class="fila">
       <div class="campo lugar-destino sin-borde"><input id="destinoDireccion" placeholder="DESTINO"></div>

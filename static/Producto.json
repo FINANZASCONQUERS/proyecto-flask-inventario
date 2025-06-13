@@ -61,5 +61,13 @@
         "API_Obs": "",
         "API_Cor": "",
         "UN": ""
+    },
+    {
+        "PRODUCTO": "DIESEL MARINO",
+        "TempF": "",
+        "API_Obs": "",
+        "API_Cor": "",
+        "UN": 1202
     }
+
 ]
