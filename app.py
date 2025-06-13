@@ -39,7 +39,6 @@ def formatear_info_actualizacion(fecha_str_original, usuario_str, tipo_fecha="un
         print(f"Error al formatear fecha: {e}") 
         return f"Fecha de registro (error de formato): {fecha_str_original}"
 
-
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_para_produccion_cambiar'
 
@@ -69,31 +68,65 @@ def log_request():
     print(f"➞️  {request.method} {request.path}")
 
 USUARIOS = {
+    # Carlos (Admin): Tiene acceso a todo.
+    "oci@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Carlos Barón",
+        "rol": "admin",
+        "area": [] # El admin no necesita áreas específicas, su rol le da acceso a todo.
+    },
+    # Juan Diego (Editor): Solo acceso a Barcaza Orion.
+    "qualitycontrol@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Cuadros",
+        "rol": "editor",
+        "area": ["barcaza_orion"] 
+    },
+    # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
-        "area": "barcaza",
         "nombre": "Ricardo Congo",
-        "rol": "manager"
+        "rol": "editor",
+        "area": ["barcaza_bita"]
     },
-    "qualitycontrol@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "barcaza", "nombre": "Juan Diego Cuadros", "rol": "manager"
-    },
-    "production@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "planta", "nombre": "Ignacio Quimbayo", "rol": "production"
-    },
-    "ops@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "transito", "nombre": "Juliana Torres", "rol": "operations"
-    },
+    # Omar (Viewer): Rol limitado para ver reportes.
     "omar.morales@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "reporte", "nombre": "Omar Morales", "rol": "admin"
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Omar Morales",
+        "rol": "viewer",
+        "area": ["reportes"] 
     },
-    "oci@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "barcaza", "nombre": "Carlos Barón", "rol": "manager"
+
+    "david.restrepo@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "David Restrepo",
+        "rol": "viewer",
+        "area": ["reportes"] 
     },
+    
+    # Ignacio (Editor): Solo acceso a Planta.
+    "production@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Ignacio Quimbayo",
+        "rol": "editor",
+        "area": ["planta"] # Corregido: ya no tiene acceso a tránsito.
+    },
+    # Juliana (Editor): Tiene acceso a Tránsito y a Generar Guía.
+    "ops@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juliana Torres",
+        "rol": "editor",
+        "area": ["transito", "guia_transporte"]
+    },
+    # Samantha (Editor): Tiene acceso solo a Generar Guía.
     "logistic@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), "area": "logistica", "nombre": "Samantha Roa", "rol": "user"
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Samantha Roa",
+        "rol": "editor",
+        "area": ["guia_transporte"]
     }
 }
+
     
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
@@ -243,21 +276,87 @@ def cargar_transito_config():
             return default_config
     except Exception as e:
         print(f"Error crítico al cargar {ruta_config}: {e}. Usando configuración por defecto.")
-        
-@app.route('/transito')
+
+def login_required(f):
+    # ... tu decorador de login (déjalo como está) ...
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # ...
+     return decorated_function
+
+
+def permiso_requerido(area_requerida):
+    """
+    Decorador que verifica si un usuario tiene permiso para un área específica.
+    El rol 'admin' siempre tiene acceso.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 1. El admin siempre tiene acceso
+            if session.get('rol') == 'admin':
+                return f(*args, **kwargs)
+            
+            # 2. Revisa si el área requerida está en la lista de áreas del usuario
+            areas_del_usuario = session.get('area', [])
+            if area_requerida in areas_del_usuario:
+                return f(*args, **kwargs)
+            
+            # 3. Si no cumple ninguna condición, denegar acceso
+            flash("No tienes los permisos necesarios para acceder a esta página.", "danger")
+            return redirect(url_for('home'))
+        return decorated_function
+    return decorator
+def calcular_estadisticas(lista_tanques):
+    """
+    Calcula totales y promedios PONDERADOS para una lista de tanques.
+    El promedio de API, BSW y S se pondera por el volumen (BLS_60) de cada tanque.
+    """
+    if not lista_tanques:
+        return {
+            'total_cap': 0, 'total_bls': 0, 'total_porc': 0,
+            'prom_api': 0, 'prom_bsw': 0, 'prom_s': 0
+        }
+
+    # --- Totales simples (Suma) ---
+    total_cap = sum(float(t.get('MAX_CAP') or 0) for t in lista_tanques)
+    total_bls = sum(float(t.get('BLS_60') or 0) for t in lista_tanques)
+    total_porc = (total_bls / total_cap * 100) if total_cap > 0 else 0
+
+    # --- INICIO DEL CÁLCULO DE PROMEDIO PONDERADO ---
+    
+    suma_ponderada_api = 0
+    suma_ponderada_bsw = 0
+    suma_ponderada_s = 0
+
+    # Solo calculamos si hay volumen total para evitar división por cero
+    if total_bls > 0:
+        for t in lista_tanques:
+            bls = float(t.get('BLS_60') or 0)
+            
+            # El "peso" de cada tanque es su volumen dividido por el volumen total
+            peso = bls / total_bls
+            
+            # Multiplicamos el valor de cada propiedad por su peso y lo sumamos
+            suma_ponderada_api += (float(t.get('API') or 0) * peso)
+            suma_ponderada_bsw += (float(t.get('BSW') or 0) * peso)
+            suma_ponderada_s += (float(t.get('S') or 0) * peso)
+
+    return {
+        'total_cap': total_cap,
+        'total_bls': total_bls,
+        'total_porc': total_porc,
+        'prom_api': suma_ponderada_api, # Ahora estos son los promedios ponderados
+        'prom_bsw': suma_ponderada_bsw,
+        'prom_s': suma_ponderada_s
+    }
+
 @login_required
+@permiso_requerido('transito')        
+@app.route('/transito')
 def transito():
-    # Permiso de acceso (sin cambios)
-    if session.get('email') != "ops@conquerstrading.com":
-        flash("No tienes permisos para acceder a esta sección.", "danger")
-        return redirect(url_for('home'))
-        
     carpeta_registros = os.path.join(BASE_DIR, "registros")
     os.makedirs(carpeta_registros, exist_ok=True)
-
-    # --- LÓGICA CORREGIDA PARA CARGAR LOS ÚLTIMOS DATOS ---
-
-    # Cargar los últimos datos guardados para 'general' (EDSM)
     try:
         archivos_general = sorted([f for f in os.listdir(carpeta_registros) if f.startswith("transito_general_") and f.endswith(".json")], reverse=True)
         if archivos_general:
@@ -321,13 +420,14 @@ def logout():
     flash('Sesión cerrada', 'info')
     return redirect(url_for('login'))
 
-@app.route('/planta')
 @login_required
+@permiso_requerido('planta')
+@app.route('/planta')
 def planta():
    return render_template("planta.html", planilla=PLANILLA_PLANTA)
 
-@app.route('/reporte_planta')
 @login_required
+@app.route('/reporte_planta')
 def reporte_planta():
     carpeta = "registros"
     datos_planta_js = []
@@ -364,10 +464,10 @@ def reporte_planta():
 
     return render_template("reporte_planta.html", 
                            datos_planta_para_js=datos_planta_js,
-                           fecha_actualizacion_info=fecha_actualizacion_info) # N
+                           fecha_actualizacion_info=fecha_actualizacion_info)
 
-@app.route('/guardar-registro-transito-<tipo_transito>', methods=['POST'])
 @login_required
+@app.route('/guardar-registro-transito-<tipo_transito>', methods=['POST'])
 def guardar_transito(tipo_transito): # tipo_transito será 'general' o 'refineria'
     app.logger.info(f"Solicitud para guardar tránsito tipo: {tipo_transito}")
     
@@ -466,9 +566,9 @@ def guardar_transito(tipo_transito): # tipo_transito será 'general' o 'refineri
     except Exception as e_write_file:
         app.logger.error(f"Guardar Tránsito: Error crítico al escribir el archivo de registro '{ruta_archivo_final}': {e_write_file}")
         return jsonify(success=False, message=f"Error del servidor al guardar el archivo de registro: {str(e_write_file)}"), 500
-
-@app.route('/agregar-producto', methods=['POST'])
+    
 @login_required
+@app.route('/agregar-producto', methods=['POST'])
 def agregar_producto():
     data = request.get_json()
     nuevo_producto = data.get("producto")
@@ -490,9 +590,9 @@ def agregar_producto():
         return jsonify(success=True)
     except Exception as e:
         return jsonify(success=False, message=str(e))
-       
+    
+@login_required       
 @app.route('/historial_registros') 
-@login_required
 def historial_registros():        
     registros = []
     carpeta = "registros"
@@ -514,8 +614,8 @@ def historial_registros():
     # Asegúrate que el nombre del template sigue siendo el correcto si quieres reutilizarlo
     return render_template("reporte_general.html", registros=registros, nombre=session.get("nombre"))
 
-@app.route('/reporte_transito')
 @login_required
+@app.route('/reporte_transito')
 def reporte_transito():
     app.logger.info("Accediendo a /reporte_transito")
     datos_consolidados = {}
@@ -605,14 +705,10 @@ def reporte_transito():
                            datos_conteo_camiones=datos_conteo_camiones,
                            nombre=session.get("nombre"),
                            fecha_actualizacion_info=fecha_actualizacion_info)
-
-@app.route('/barcaza_orion')
 @login_required
+@permiso_requerido('barcaza_orion')
+@app.route('/barcaza_orion')
 def barcaza_orion():
-    if session.get('area') != 'barcaza':
-        flash("No tiene permisos para acceder a la planilla de barcazas.", "danger")
-        return redirect(url_for('home'))
-
     # Lógica para cargar datos guardados (esta parte no cambia)
     datos_guardados = []
     try:
@@ -645,16 +741,10 @@ def barcaza_orion():
                            tanques_margoth=tanques_margoth,
                            tanques_odisea=tanques_odisea,
                            nombre=session.get("nombre"))
-@app.route('/barcaza_bita')
 @login_required
+@permiso_requerido('barcaza_bita')
+@app.route('/barcaza_bita')
 def barcaza_bita():
-    # 1. PERMISO DE ACCESO (esto ya lo tienes bien)
-    if session.get('email') != "quality.manager@conquerstrading.com":
-        flash("No tiene permisos para acceder a esta planilla.", "danger")
-        return redirect(url_for('home'))
-    
-    # 2. LÓGICA PARA CARGAR LOS DATOS GUARDADOS
-    # Intenta leer el archivo .json más reciente.
     datos_guardados = []
     try:
         carpeta = "registros"
@@ -686,23 +776,21 @@ def barcaza_bita():
         nombre=session.get('nombre', 'Desconocido') 
     )
 
-@app.route('/guia_transporte')
 @login_required
+@permiso_requerido('guia_transporte') 
+@app.route('/guia_transporte')
 def guia_transporte():
-    areas_permitidas = ['transito', 'logistica', 'barcaza'] 
-    if session.get('area') not in areas_permitidas and session.get('rol') != 'admin':
-        flash("No tienes permisos para generar guías de transporte.", "danger")
-        return redirect(url_for('home'))
+    # El if de permisos ya no es necesario aquí.
     return render_template("guia_transporte.html", nombre=session.get("nombre"))
 
-@app.route('/reporte_barcaza')
 @login_required
+@app.route('/reporte_barcaza')
 def reporte_barcaza():
-    # Solo usuarios autorizados pueden ver este reporte
-    if session.get('rol') not in ['admin', 'manager'] and session.get('area') != 'barcaza':
-        flash("No tiene permisos para ver este reporte.", "danger")
-        return redirect(url_for('home'))
-
+    """
+    Muestra el reporte de la Barcaza Orion, calculando un total consolidado
+    y luego desglosando por cada grupo de tanques.
+    """
+    # --- 1. Carga de datos del archivo JSON más reciente ---
     carpeta = "registros"
     fecha_actualizacion_info = "No hay registros de Barcaza Orion guardados."
     datos_barcaza_reporte = []
@@ -717,66 +805,54 @@ def reporte_barcaza():
                 contenido = json.load(f)
             
             datos_barcaza_reporte = contenido.get("datos", [])
-            
             fecha_guardado = contenido.get("fecha")
             usuario_guardado = contenido.get("usuario")
-            # Asumiendo que tienes la función formatear_info_actualizacion
             fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado)
 
     except Exception as e:
         flash(f"Error al generar el reporte de barcaza: {e}", "danger")
         fecha_actualizacion_info = "Error al cargar la información."
 
-    # --- INICIO DE LA LÓGICA DE AGRUPACIÓN CORRECTA ---
-    
-    barcazas_agrupadas = {}
-    
-    # Un diccionario para mapear la clave del grupo al nombre que quieres mostrar en el reporte
-    nombres_display = {
-        "PRINCIPAL": "Tanque Principal (TK-101)",
-        "MANZANILLO": "Barcaza Manzanillo (MGO)",
-        "CR": "Barcaza CR",
-        "MARGOTH": "Barcaza Margoth",
-        "ODISEA": "Barcaza Odisea"
-    }
+    total_consolidado = calcular_estadisticas(datos_barcaza_reporte)
 
+    barcazas_agrupadas = {}
+    nombres_display = {
+        "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
+        "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
+    }
     if datos_barcaza_reporte:
         for tanque in datos_barcaza_reporte:
-            # Obtenemos el grupo directamente de la clave 'grupo' del tanque
             grupo_key = tanque.get("grupo")
-            
-            # Verificamos si el grupo del tanque está en nuestro diccionario de nombres
             if grupo_key in nombres_display:
                 nombre_barcaza = nombres_display[grupo_key]
-                
-                # Agrupamos el tanque bajo su nombre completo
                 if nombre_barcaza not in barcazas_agrupadas:
                     barcazas_agrupadas[nombre_barcaza] = []
                 barcazas_agrupadas[nombre_barcaza].append(tanque)
-            else:
-                # Si un tanque no tiene un grupo conocido, lo ponemos en "Otros"
-                if "Otros Tanques" not in barcazas_agrupadas:
-                    barcazas_agrupadas["Otros Tanques"] = []
-                barcazas_agrupadas["Otros Tanques"].append(tanque)
 
-    # --- FIN DE LA LÓGICA DE AGRUPACIÓN CORRECTA ---
-    
+    datos_para_template = {}
+    for nombre_barcaza, tanques_list in barcazas_agrupadas.items():
+        estadisticas = calcular_estadisticas(tanques_list)
+        datos_para_template[nombre_barcaza] = {
+            "tanques": tanques_list,
+            "totales": estadisticas 
+        }
     return render_template("reporte_barcaza_orion.html",
-                           barcazas_agrupadas=barcazas_agrupadas,
-                           fecha_actualizacion_info=fecha_actualizacion_info)
+                           datos_para_template=datos_para_template,
+                           total_consolidado=total_consolidado,
+                           fecha_actualizacion_info=fecha_actualizacion_info,
+                           todos_los_tanques_json=json.dumps(datos_barcaza_reporte)
+                          )
 
+@login_required   
 @app.route('/reporte_barcaza_bita')
-@login_required
 def reporte_barcaza_bita():
-    # Solo usuarios autorizados pueden ver este reporte
-    if session.get('email') not in ["quality.manager@conquerstrading.com", "omar.morales@conquerstrading.com"]:
-        flash("No tiene permisos para ver este reporte.", "danger")
-        return redirect(url_for('home'))
-
+    """
+    Muestra el reporte interactivo de la Barcaza BITA.
+    """
+    # --- 1. Carga de datos del archivo JSON más reciente ---
     carpeta = "registros"
     fecha_actualizacion_info = "No hay registros de Barcaza BITA guardados."
     datos_reporte = []
-
     
     try:
         os.makedirs(carpeta, exist_ok=True)
@@ -789,75 +865,42 @@ def reporte_barcaza_bita():
             datos_reporte = contenido.get("datos", [])
             fecha_guardado = contenido.get("fecha")
             usuario_guardado = contenido.get("usuario")
-            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado, tipo_fecha="underscore")
+            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado)
     except Exception as e:
         flash(f"Error al generar el reporte de barcaza BITA: {e}", "danger")
         fecha_actualizacion_info = "Error al cargar la información."
 
-    # 1. Separar los datos por barcaza
-    tanques_marinse = [tk for tk in datos_reporte if tk['TK'].startswith('MARI')]
-    tanques_oidech = [tk for tk in datos_reporte if tk['TK'].startswith('OID')]
+    # --- 2. Calcular el total consolidado inicial ---
+    total_consolidado = calcular_estadisticas(datos_reporte)
 
-    # 2. Función auxiliar para calcular totales y promedios (evita repetir código)
-    def calcular_estadisticas(lista_tanques):
-        if not lista_tanques:
-            return {
-                'total_cap': 0, 'total_bls': 0, 'total_porc': 0,
-                'prom_api': 0, 'prom_bsw': 0, 'prom_s': 0
-            }
+    # --- 3. Separación de datos para la vista inicial ---
+    tanques_marinse = [tk for tk in datos_reporte if tk.get('TK','').startswith('MARI')]
+    tanques_oidech = [tk for tk in datos_reporte if tk.get('TK','').startswith('OID')]
 
-        # Sumatorias
-        total_cap = sum(float(t.get('MAX_CAP') or 0) for t in lista_tanques)
-        total_bls = sum(float(t.get('BLS_60') or 0) for t in lista_tanques)
-
-        # Listas para promedios (solo incluir valores válidos y numéricos)
-        apis = [float(t.get('API') or 0) for t in lista_tanques if str(t.get('API')).strip()]
-        bsws = [float(t.get('BSW') or 0) for t in lista_tanques if str(t.get('BSW')).strip()]
-        cs = [float(t.get('S') or 0) for t in lista_tanques if str(t.get('S')).strip()]
-        
-        # Cálculos finales
-        total_porc = (total_bls / total_cap * 100) if total_cap > 0 else 0
-        prom_api = sum(apis) / len(apis) if apis else 0
-        prom_bsw = sum(bsws) / len(bsws) if bsws else 0
-        prom_s = sum(cs) / len(cs) if cs else 0
-        
-        return {
-            'total_cap': total_cap, 'total_bls': total_bls, 'total_porc': total_porc,
-            'prom_api': prom_api, 'prom_bsw': prom_bsw, 'prom_s': prom_s
-        }
-
-    # 3. Calcular estadísticas para cada barcaza
+    # --- 4. Cálculo de estadísticas para cada grupo ---
     stats_marinse = calcular_estadisticas(tanques_marinse)
     stats_oidech = calcular_estadisticas(tanques_oidech)
     
-    # 4. Renderizar la plantilla pasando TODAS las variables que necesita
+    # --- 5. Renderizado de la plantilla con las nuevas variables ---
     return render_template(
-        "reporte_barcaza_bita.html",  # <-- Asegúrate de que el nombre del archivo HTML es correcto
-        titulo="Reporte de Inventario - Barcaza BITA",
+        "reporte_barcaza_bita.html",
+        titulo="Reporte Interactivo - Barcaza BITA",
         fecha_actualizacion_info=fecha_actualizacion_info,
         nombre=session.get('nombre', 'Desconocido'),
         
-        # Datos para Barcaza Marinse
-        tanques_marinse=tanques_marinse,
-        total_cap_marinse=stats_marinse['total_cap'],
-        total_bls_marinse=stats_marinse['total_bls'],
-        total_porc_marinse=stats_marinse['total_porc'],
-        prom_api_marinse=stats_marinse['prom_api'],
-        prom_bsw_marinse=stats_marinse['prom_bsw'],
-        prom_s_marinse=stats_marinse['prom_s'],
+        # Nuevas variables para la interactividad
+        total_consolidado=total_consolidado,
+        todos_los_tanques_json=json.dumps(datos_reporte),
 
-        # Datos para Barcaza Oidech
+        # Datos para los grupos (la plantilla los usará para la estructura inicial)
+        tanques_marinse=tanques_marinse,
+        stats_marinse=stats_marinse,
         tanques_oidech=tanques_oidech,
-        total_cap_oidech=stats_oidech['total_cap'],
-        total_bls_oidech=stats_oidech['total_bls'],
-        total_porc_oidech=stats_oidech['total_porc'],
-        prom_api_oidech=stats_oidech['prom_api'],
-        prom_bsw_oidech=stats_oidech['prom_bsw'],
-        prom_s_oidech=stats_oidech['prom_s']
+        stats_oidech=stats_oidech
     )
 
-@app.route('/guardar_celda_barcaza', methods=['POST'])
 @login_required
+@app.route('/guardar_celda_barcaza', methods=['POST'])
 def guardar_celda_barcaza():
     if session.get('area') != 'barcaza':
         return jsonify(success=False, message="Permiso denegado"), 403
@@ -885,8 +928,8 @@ def guardar_celda_barcaza():
     else:
         return jsonify(success=False, message=f"Tanque no encontrado: {tk} en grupo {grupo}"), 404
 
-@app.route('/guardar_celda_bita', methods=['POST'])
 @login_required
+@app.route('/guardar_celda_bita', methods=['POST'])
 def guardar_celda_bita():
     # PERMISO: Ricardo puede editar celdas de BITA
     if session.get('email') != "quality.manager@conquerstrading.com":
@@ -908,9 +951,8 @@ def guardar_celda_bita():
 
     return jsonify(success=False, message="Tanque no encontrado en la planilla BITA"), 404
 
-
-@app.route('/guardar_registro_barcaza', methods=['POST'])
 @login_required
+@app.route('/guardar_registro_barcaza', methods=['POST'])
 def guardar_registro_barcaza():
     # 1. Valida que el usuario tenga permiso
     if session.get('area') != 'barcaza':
@@ -954,9 +996,9 @@ def guardar_registro_barcaza():
         # Si algo sale mal durante el guardado, se informa el error
         print(f"Error al guardar registro de Orion: {e}")
         return jsonify(success=False, message=f"Error interno del servidor al guardar el archivo: {e}"), 500
-
-@app.route('/guardar_registro_bita', methods=['POST'])
+    
 @login_required
+@app.route('/guardar_registro_bita', methods=['POST'])
 def guardar_registro_bita():
     # 1. VERIFICAR PERMISOS
     # Solo Ricardo puede guardar el registro completo.
@@ -1000,65 +1042,106 @@ def guardar_registro_bita():
         # Si algo sale mal, devolvemos un error 500
         print(f"Error al guardar el registro de BITA: {e}") # Para depuración en la consola
         return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
-
-@app.route('/dashboard_reportes')
+    
 @login_required
+@app.route('/dashboard_reportes')
 def dashboard_reportes():
-    if session.get('area') == 'logistica':
-        flash("Tu perfil no tiene acceso al dashboard general.", "warning")
-        return redirect(url_for('home'))
+    # El permiso de acceso no necesita cambios
+    user_areas = session.get('area', [])
+    if session.get('rol') != 'admin' and len(user_areas) == 1 and user_areas[0] == 'guia_transporte':
+        return redirect(url_for('home_logistica'))
 
     carpeta = "registros"
     os.makedirs(carpeta, exist_ok=True)
     
-    planta_summary = {"datos": [], "fecha": "N/A", "usuario": "N/A"}
-    try:
-        archivos_planta = sorted([a for a in os.listdir(carpeta) if a.startswith("planta_") and a.endswith(".json")], reverse=True)
-        if archivos_planta:
-            with open(os.path.join(carpeta, archivos_planta[0]), encoding='utf-8') as f:
-                planta_summary = json.load(f)
-    except Exception as e:
-        print(f"Error cargando resumen planta: {e}")
+    # --- INICIO DE LA LÓGICA MEJORADA ---
 
-    transito_summary = {"total_nsv_general": 0, "fecha": "N/A", "usuario": "N/A"}
-    try:
-        archivos_transito = sorted([a for a in os.listdir(carpeta) if a.startswith("transito_") and a.endswith(".json")], reverse=True)
-        if archivos_transito:
-             with open(os.path.join(carpeta, archivos_transito[0]), 'r', encoding='utf-8') as f:
-                data_mas_reciente = json.load(f)
-                transito_summary["fecha"] = data_mas_reciente.get("fecha_guardado_str", "N/A")
-                transito_summary["usuario"] = data_mas_reciente.get("usuario", "N/A")
-    except Exception as e:
-        print(f"Error procesando resumen tránsito: {e}")
+    def crear_resumen(prefijo_archivo):
+        """
+        Función auxiliar para cargar el último registro de un área y formatear su información.
+        """
+        resumen = {
+            "datos": [], 
+            "info_completa": "Sin Registros"
+        }
+        try:
+            archivos = sorted([a for a in os.listdir(carpeta) if a.startswith(prefijo_archivo) and a.endswith(".json")], reverse=True)
+            if archivos:
+                ruta_reciente = os.path.join(carpeta, archivos[0])
+                with open(ruta_reciente, 'r', encoding='utf-8') as f:
+                    contenido = json.load(f)
+                
+                # Guarda la lista de datos para cálculos en la plantilla (ej. total BLS)
+                resumen["datos"] = contenido.get("datos", [])
+                
+                # Usa la función que ya tienes para crear el texto con fecha, hora y usuario
+                resumen["info_completa"] = formatear_info_actualizacion(
+                    contenido.get("fecha"),
+                    contenido.get("usuario")
+                )
+        except Exception as e:
+            print(f"Error cargando resumen para {prefijo_archivo}: {e}")
+            resumen["info_completa"] = "Error al cargar datos"
+            
+        return resumen
 
-    orion_summary = {"total_bls": 0, "fecha": "N/A", "usuario": "N/A"}
+    # Llama a la función auxiliar para cada tipo de reporte
+    planta_summary = crear_resumen("planta_")
+    transito_summary = crear_resumen("transito_")
+    orion_summary = crear_resumen("barcaza_orion_")
+    bita_summary = crear_resumen("barcaza_bita_")
+    
+    recent_activities = []
     try:
-        archivos_orion = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_orion_") and a.endswith(".json")], reverse=True)
-        if archivos_orion:
-            with open(os.path.join(carpeta, archivos_orion[0]), 'r', encoding='utf-8') as f:
+        # 1. Obtener TODOS los archivos .json de la carpeta de registros
+        todos_los_archivos = [f for f in os.listdir(carpeta) if f.endswith(".json")]
+        
+        # 2. Ordenarlos por nombre para tener los más recientes primero
+        todos_los_archivos.sort(reverse=True)
+        
+        # 3. Tomar solo los últimos 7 registros para mostrar
+        for archivo in todos_los_archivos[:7]:
+            ruta = os.path.join(carpeta, archivo)
+            with open(ruta, 'r', encoding='utf-8') as f:
                 contenido = json.load(f)
-            orion_summary["fecha"] = contenido.get("fecha", "N/A")
-            orion_summary["usuario"] = contenido.get("usuario", "N/A")
-            datos = contenido.get("datos", [])
-            total_bls = sum(float(str(d.get('BLS_60', 0)).replace(',', '.')) for d in datos if str(d.get('BLS_60')).strip())
-            orion_summary["total_bls"] = total_bls
-    except Exception as e:
-        print(f"Error cargando resumen Orion: {e}")
 
-    bita_summary = {"total_bls": 0, "fecha": "N/A", "usuario": "N/A"}
-    try:
-        archivos_bita = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_bita_") and a.endswith(".json")], reverse=True)
-        if archivos_bita:
-            with open(os.path.join(carpeta, archivos_bita[0]), 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-            bita_summary["fecha"] = contenido.get("fecha", "N/A")
-            bita_summary["usuario"] = contenido.get("usuario", "N/A")
-            datos = contenido.get("datos", [])
-            total_bls = sum(float(str(d.get('BLS_60', 0)).replace(',', '.')) for d in datos if str(d.get('BLS_60')).strip())
-            bita_summary["total_bls"] = total_bls
-    except Exception as e:
-        print(f"Error cargando resumen BITA: {e}")
+            # Extraer la información relevante
+            fecha_str = contenido.get("fecha", "")
+            usuario = contenido.get("usuario", "N/A")
+            
+            # Determinar el módulo y el color basado en el nombre del archivo
+            if "planta" in archivo:
+                modulo = {"nombre": "Planta", "color": "planta"}
+            elif "transito" in archivo:
+                modulo = {"nombre": "Tránsito", "color": "transito"}
+            elif "barcaza_orion" in archivo:
+                modulo = {"nombre": "Barcaza Orion", "color": "orion"}
+            elif "barcaza_bita" in archivo:
+                modulo = {"nombre": "Barcaza BITA", "color": "bita"}
+            else:
+                modulo = {"nombre": "Desconocido", "color": "secondary"}
 
+            # Formatear solo la hora
+            try:
+                hora = datetime.strptime(fecha_str, "%Y_%m_%d_%H_%M_%S").strftime("%I:%M %p")
+            except:
+                hora = "Hora inválida"
+
+            recent_activities.append({
+                "module": modulo["nombre"],
+                "module_color": modulo["color"],
+                "action": "Registro guardado",
+                "user": usuario,
+                "time": hora
+            })
+    except Exception as e:
+        print(f"Error al generar actividad reciente: {e}")
+
+    # --- FIN DE LA NUEVA LÓGICA ---
+
+   
+
+    # Renderiza la plantilla pasándole los nuevos diccionarios de resumen
     return render_template("dashboard_reportes.html",
                            nombre=session.get("nombre"),
                            planta_summary=planta_summary,
@@ -1066,9 +1149,8 @@ def dashboard_reportes():
                            orion_summary=orion_summary,
                            bita_summary=bita_summary)
 
-                          
+@login_required                        
 @app.route('/guardar-datos-planta', methods=['POST'])
-@login_required
 def guardar_datos_planta():
     if not request.is_json:
         return jsonify(success=False, message="Formato no válido"), 400
@@ -1088,8 +1170,8 @@ def guardar_datos_planta():
 
     return jsonify(success=False, message="Tanque o campo no encontrado"), 404
 
-@app.route('/guardar-registro-planta', methods=['POST'])
 @login_required
+@app.route('/guardar-registro-planta', methods=['POST'])
 def guardar_registro_planta():
     # --- VERIFICACIÓN DE HORA (TEMPORALMENTE DESACTIVADA) ---
     # Se ha añadido y comentado un bloque similar para la planta.
@@ -1116,44 +1198,29 @@ def guardar_registro_planta():
 
 @app.route('/')
 def home():
+    """Redirige al usuario a su página de inicio correcta después de iniciar sesión."""
     if 'email' not in session:
         return redirect(url_for('login'))
 
-    email = session.get('email')
-    area = session.get('area')
-
-    # Lógica de redirección por usuario o rol específico
-    if email == "omar.morales@conquerstrading.com":
-        return redirect(url_for("dashboard_reportes"))
+    # Si el rol es 'admin', siempre va al dashboard completo.
+    if session.get('rol') == 'admin':
+        return redirect(url_for('dashboard_reportes'))
     
-    # Lógica de redirección general basada en el área
-    if area == "planta":
-        return redirect(url_for("planta"))
-    elif area == "transito":
-        return redirect(url_for("transito"))
-    elif area == "logistica":
-        return redirect(url_for('guia_transporte'))
-        
-    elif area == "barcaza":
-        # --- LÓGICA DE PERMISOS DEFINITIVA ---
-        
-        # Juan Diego Y Carlos Barón van a Orion
-        if email in ["quality.control@conquerstrading.com", "oci@conquerstrading.com"]:
-            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
-            return redirect(url_for("barcaza_orion"))
-        
-        # Ricardo Congo va a BITA
-        elif email == "quality.manager@conquerstrading.com":
-            return redirect(url_for("barcaza_bita"))
-        
-        else:
-            # Si es del área barcaza pero no coincide con los anteriores
-            flash("No tienes una planilla de barcaza específica asignada.", "warning")
-            return redirect(url_for('logout'))
+    # Si el usuario es de logística (y no es admin), va a su página de inicio especial.
+    # Comprobamos si 'guia_transporte' es su ÚNICO permiso para evitar confusiones.
+    user_areas = session.get('area', [])
+    if len(user_areas) == 1 and user_areas[0] == 'guia_transporte':
+        return redirect(url_for('home_logistica'))
 
-    # Si ninguna regla coincide (ej. un área no definida)
-    flash("No se encontró una página de inicio para tu perfil.", "warning")
-    return redirect(url_for('logout'))
+    # Todos los demás usuarios van al dashboard general.
+    return redirect(url_for('dashboard_reportes'))
+
+@login_required
+@permiso_requerido('guia_transporte')
+@app.route('/inicio-logistica')
+def home_logistica():
+    """Página de inicio simplificada para el área de logística."""
+    return render_template('home_logistica.html')
 
 @app.route('/test')
 def test():
@@ -1186,9 +1253,8 @@ def guardar_clientes(clientes):
     with open(ruta_clientes, 'w', encoding='utf-8') as f:
         json.dump(clientes, f, ensure_ascii=False, indent=4)
 
-
-@app.route('/gestionar_clientes')
 @login_required
+@app.route('/gestionar_clientes')
 def gestionar_clientes():
     """Muestra la página para añadir nuevos clientes y ver los existentes."""
     # Define qué áreas pueden gestionar clientes
@@ -1200,9 +1266,8 @@ def gestionar_clientes():
     clientes_actuales = cargar_clientes()
     return render_template('gestionar_clientes.html', clientes=clientes_actuales)
 
-
-@app.route('/guardar_cliente', methods=['POST'])
 @login_required
+@app.route('/guardar_cliente', methods=['POST'])
 def guardar_cliente():
     """Recibe los datos del formulario y guarda el nuevo cliente."""
     # Define qué áreas pueden guardar clientes
@@ -1241,8 +1306,8 @@ def guardar_cliente():
     flash(f"Cliente '{nombre}' agregado exitosamente.", "success")
     return redirect(url_for('gestionar_clientes'))
 
-@app.route('/agregar_cliente_ajax', methods=['POST'])
 @login_required
+@app.route('/agregar_cliente_ajax', methods=['POST'])
 def agregar_cliente_ajax():
     """Recibe datos de un nuevo cliente vía AJAX y los guarda."""
     # Revisa permisos
@@ -1290,9 +1355,8 @@ def guardar_conductores(conductores):
     with open(ruta_conductores, 'w', encoding='utf-8') as f:
         json.dump(conductores, f, ensure_ascii=False, indent=4)
 
-
-@app.route('/agregar_conductor_ajax', methods=['POST'])
 @login_required
+@app.route('/agregar_conductor_ajax', methods=['POST'])
 def agregar_conductor_ajax():
     """Recibe datos de un nuevo conductor vía AJAX y los guarda."""
     # Revisa permisos
