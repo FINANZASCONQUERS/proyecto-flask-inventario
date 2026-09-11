@@ -561,7 +561,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Asistente Logístico",
         "rol": "editor",
-        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion"]
+        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "control_calidad"]
     },
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
